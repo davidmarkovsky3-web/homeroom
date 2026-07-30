@@ -1,0 +1,101 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'selection' %}
+{% block title %}My picks — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>My course requests</h1>
+    <div class="sub">{{ window.name if window else 'No selection window' }}</div>
+  </div>
+  <div class="row no-print">
+    {% if window and window.accepting %}
+      <a class="btn btn-sm" href="{{ url_for('courses.selection') }}">Edit my picks</a>
+    {% endif %}
+    <button class="btn btn-ghost btn-sm" onclick="window.print()">Print</button>
+  </div>
+</div>
+
+{% if requests_by_slot %}
+  <div class="grid grid-sidebar">
+    <div class="card">
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th class="tight">Choice</th><th>Rank</th><th>Course</th><th class="hide-sm">Period</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for slot, ranks in requests_by_slot.items() %}
+              {% for rank in [1, 2] %}
+                {% set record = ranks.get(rank) %}
+                {% if record %}
+                <tr>
+                  {% if rank == 1 %}
+                    <td class="tight" rowspan="{{ 2 if ranks.get(2) else 1 }}">
+                      <span class="slot-num">{{ slot }}</span>
+                    </td>
+                  {% endif %}
+                  <td class="tight">
+                    <span class="pick-tag {{ 'pick-1' if rank == 1 else 'pick-2' }}">{{ record.rank_label }}</span>
+                  </td>
+                  <td>
+                    <a href="{{ url_for('courses.detail', course_id=record.course.id) }}">
+                      <b>{{ record.course.name }}</b></a><br>
+                    <small class="muted mono">{{ record.course.code }} · {{ record.course.department }}</small>
+                  </td>
+                  <td class="hide-sm">{{ record.course.period.label if record.course.period else '—' }}</td>
+                  <td>
+                    <span class="badge badge-{{ {'pending':'warn','approved':'ok','denied':'bad'}[record.status] }}">
+                      {{ record.status }}</span>
+                    {% if record.reviewer_note %}
+                      <br><small class="muted">{{ record.reviewer_note }}</small>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card card-tint">
+        <h3>What happens next</h3>
+        <p class="muted" style="font-size:.9rem">
+          Your counselor reviews each 1st pick. If it can't be scheduled — the section is full or
+          it conflicts with another course — they fall back to your 2nd pick for that choice.
+        </p>
+        <p class="muted" style="font-size:.9rem; margin:0">
+          Approved requests seat you in the course automatically. Check back here for status
+          changes and counselor notes.
+        </p>
+      </div>
+      {% if window %}
+      <div class="card card-tint">
+        <dl class="kv" style="grid-template-columns:110px 1fr">
+          <dt>Window</dt><dd>{{ window.name }}</dd>
+          <dt>Closes</dt><dd>{{ window.closes_on|pretty_date }}</dd>
+          <dt>Status</dt>
+          <dd><span class="badge badge-{{ 'ok' if window.accepting else 'warn' }}">
+            {{ 'Open' if window.accepting else 'Closed' }}</span></dd>
+        </dl>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+{% else %}
+  <div class="card">
+    <div class="empty">
+      <strong>You haven't submitted any picks yet</strong>
+      {% if window and window.accepting %}
+        Course selection is open until {{ window.closes_on|pretty_date }}.
+        <div style="margin-top:16px"><a class="btn" href="{{ url_for('courses.selection') }}">Start course selection</a></div>
+      {% else %}
+        There's no open selection window right now.
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

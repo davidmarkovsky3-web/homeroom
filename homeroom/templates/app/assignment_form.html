@@ -1,0 +1,100 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'assignments' %}
+{% block title %}New assignment — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>New assignment</h1>
+    <div class="sub">{{ course.name }} · <span class="mono">{{ course.code }}</span></div>
+  </div>
+  <a class="btn btn-ghost btn-sm"
+     href="{{ url_for('assignments.teacher_index', course=course.id) }}">← Back</a>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <form method="post">
+      <input type="hidden" name="course_id" value="{{ course.id }}">
+
+      <div class="field">
+        <label for="title">Title *</label>
+        <input id="title" name="title" type="text" required
+               value="{{ form.get('title', '') }}" placeholder="Unit 3 Exam">
+      </div>
+
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" name="description"
+                  placeholder="What students need to do.">{{ form.get('description', '') }}</textarea>
+      </div>
+
+      <div class="grid grid-3" style="gap:0 14px">
+        <div class="field">
+          <label for="points_possible">Points possible *</label>
+          <input id="points_possible" name="points_possible" type="number" min="0" step="0.5"
+                 required value="{{ form.get('points_possible', 100) }}">
+        </div>
+        <div class="field">
+          <label for="assigned_on">Assigned</label>
+          <input id="assigned_on" name="assigned_on" type="date"
+                 value="{{ form.get('assigned_on', '') }}">
+        </div>
+        <div class="field">
+          <label for="due_on">Due</label>
+          <input id="due_on" name="due_on" type="date" value="{{ form.get('due_on', '') }}">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="category_id">Grade category</label>
+        <select id="category_id" name="category_id">
+          <option value="">No category</option>
+          {% for category in course.categories %}
+            <option value="{{ category.id }}"
+                    {% if form.get('category_id')|string == category.id|string %}selected{% endif %}>
+              {{ category.name }} ({{ (category.weight * 100)|round|int }}%)
+            </option>
+          {% endfor %}
+        </select>
+        {% if course.grading_mode == 'weighted' and not course.categories %}
+          <div class="field-hint">This course uses weighted grading but has no categories yet —
+            <a href="{{ url_for('assignments.categories', course_id=course.id) }}">set them up</a>.</div>
+        {% endif %}
+      </div>
+
+      <div class="check">
+        <input type="checkbox" id="published" name="published"
+               {% if form.get('published') == 'on' %}checked{% endif %}>
+        <label for="published"><b>Visible to students</b><br>
+          <span class="muted" style="font-weight:400">Uncheck to draft it privately first.</span></label>
+      </div>
+      <div class="check">
+        <input type="checkbox" id="graded" name="graded"
+               {% if form.get('graded') == 'on' %}checked{% endif %}>
+        <label for="graded"><b>Counts toward the course grade</b><br>
+          <span class="muted" style="font-weight:400">Uncheck for practice work.</span></label>
+      </div>
+
+      <button class="btn" type="submit">Create assignment</button>
+      <a class="btn btn-ghost" href="{{ url_for('assignments.teacher_index', course=course.id) }}">Cancel</a>
+    </form>
+  </div>
+
+  <div class="card card-tint">
+    <h3>What happens next</h3>
+    <p class="muted" style="font-size:.9rem">
+      Creating an assignment adds an ungraded row for every student on the roster, so the
+      gradebook column is ready immediately. Students see it as soon as it's published.
+    </p>
+    <hr class="divider">
+    <dl class="kv" style="grid-template-columns:1fr; gap:2px; font-size:.88rem">
+      <dt>Grading mode</dt>
+      <dd class="muted" style="margin-bottom:10px; text-transform:capitalize">
+        {{ course.grading_mode }}</dd>
+      <dt>Roster</dt>
+      <dd class="muted">{{ course.seats_taken }} students</dd>
+    </dl>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'assignments' %}
+{% block title %}Assignments — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Assignments</h1>
+    <div class="sub">
+      {% if viewing_as_parent %}{{ student.full_name }} · {% endif %}
+      {{ rows|length }} shown
+    </div>
+  </div>
+  <div class="pill-nav">
+    {% set qs = '&student=' ~ student.id if viewing_as_parent else '' %}
+    <a href="{{ url_for('assignments.my_assignments') }}?show=open{{ qs }}"
+       class="{{ 'active' if show == 'open' }}">Open</a>
+    <a href="{{ url_for('assignments.my_assignments') }}?show=missing{{ qs }}"
+       class="{{ 'active' if show == 'missing' }}">Missing</a>
+    <a href="{{ url_for('assignments.my_assignments') }}?show=graded{{ qs }}"
+       class="{{ 'active' if show == 'graded' }}">Graded</a>
+    <a href="{{ url_for('assignments.my_assignments') }}?show=all{{ qs }}"
+       class="{{ 'active' if show == 'all' }}">All</a>
+  </div>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    {% if rows %}
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th>Assignment</th><th>Course</th><th>Due</th>
+                <th class="num">Points</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+            <tr class="{{ 'risk-row risk-watch' if row.overdue }}">
+              <td>
+                <a href="{{ url_for('assignments.detail', assignment_id=row.assignment.id) }}{% if viewing_as_parent %}?student={{ student.id }}{% endif %}">
+                  <b>{{ row.assignment.title }}</b></a>
+                {% if row.assignment.category %}
+                  <br><small class="muted">{{ row.assignment.category.name }}</small>
+                {% endif %}
+              </td>
+              <td>
+                {{ row.assignment.course.name }}<br>
+                <small class="muted mono">{{ row.assignment.course.code }}</small>
+              </td>
+              <td>
+                {% if row.assignment.due_on %}
+                  {{ row.assignment.due_on|pretty_date }}
+                  {% if row.overdue %}<br><small style="color:var(--bad)">Overdue</small>{% endif %}
+                {% else %}<span class="muted">No due date</span>{% endif %}
+              </td>
+              <td class="num">
+                {% if row.grade and row.grade.points_earned is not none %}
+                  <b style="color:{{ row.grade.percent|grade_color }}">
+                    {{ '%g'|format(row.grade.points_earned) }}</b>
+                  / {{ '%g'|format(row.assignment.points_possible) }}
+                {% else %}
+                  <span class="muted">— / {{ '%g'|format(row.assignment.points_possible) }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge badge-{{ {'graded':'ok','assigned':'brand','ungraded':'','missing':'bad','excused':'info','late':'warn'}[row.status] or '' }}">
+                  {{ row.status }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">
+        <strong>Nothing here</strong>
+        {% if show == 'open' %}No open assignments — you're caught up.
+        {% elif show == 'missing' %}No missing work. Nice.
+        {% else %}Nothing matches this filter.{% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card card-tint">
+      <h3>Due in the next two weeks</h3>
+      {% if upcoming %}
+        <div class="stack" style="margin-top:10px">
+          {% for item in upcoming %}
+          <div class="row-between" style="gap:8px; font-size:.88rem">
+            <div style="min-width:0">
+              <b>{{ item.title }}</b>
+              <div class="muted" style="font-size:.8rem">{{ item.course.code }}</div>
+            </div>
+            <span class="badge">{{ item.due_on|pretty_date }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted" style="font-size:.9rem; margin:0">Nothing due in the next two weeks.</p>
+      {% endif %}
+    </div>
+
+    <div class="card card-tint">
+      <h3>Statuses</h3>
+      <dl class="kv" style="grid-template-columns:88px 1fr; font-size:.86rem">
+        <dt><span class="badge badge-brand">Assigned</span></dt><dd>Posted, not yet graded.</dd>
+        <dt><span class="badge badge-ok">Graded</span></dt><dd>Scored by your teacher.</dd>
+        <dt><span class="badge badge-bad">Missing</span></dt><dd>Not turned in — counts as zero.</dd>
+        <dt><span class="badge badge-info">Excused</span></dt><dd>Left out of your average.</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+{% endblock %}

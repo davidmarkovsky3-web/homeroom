@@ -1,0 +1,25 @@
+# The live database and uploaded files. These hold real accounts, password hashes,
+# health records and documents — they are not sample data and must not be published.
+# The app rebuilds a fresh demo database on first run via seed.py.
+instance/
+*.sqlite
+*.sqlite3
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Tooling / editors
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local logs and scratch
+*.log

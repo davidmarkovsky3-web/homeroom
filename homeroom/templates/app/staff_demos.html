@@ -1,0 +1,70 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'demos' %}
+{% block title %}Demo requests — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Demo requests</h1>
+    <div class="sub">{{ requests|length }} submitted from the marketing site</div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('staff.purchases') }}">Purchase requests →</a>
+</div>
+
+<div class="pill-nav" style="margin-bottom:16px">
+  <a href="{{ url_for('staff.demos') }}" class="{{ 'active' if not status }}">All</a>
+  {% for option in statuses %}
+    <a href="{{ url_for('staff.demos', status=option) }}"
+       class="{{ 'active' if status == option }}" style="text-transform:capitalize">{{ option }}</a>
+  {% endfor %}
+</div>
+
+{% if requests %}
+<div class="stack">
+  {% for lead in requests %}
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h3 style="margin:0">{{ lead.organization }}</h3>
+        <div class="muted" style="font-size:.85rem">
+          {{ lead.submitted_at.strftime('%b %d, %Y at %I:%M %p').replace(' 0', ' ') }} ·
+          <span class="mono">DEMO-{{ '%05d'|format(lead.id) }}</span>
+        </div>
+      </div>
+      <form method="post" action="{{ url_for('staff.update_demo', demo_id=lead.id) }}"
+            class="row" style="gap:8px">
+        <select name="status" style="min-width:140px">
+          {% for option in statuses %}
+            <option value="{{ option }}" {% if lead.status == option %}selected{% endif %}
+                    style="text-transform:capitalize">{{ option|capitalize }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-sm" type="submit">Update</button>
+      </form>
+    </div>
+    <div class="grid grid-2">
+      <dl class="kv" style="grid-template-columns:120px 1fr">
+        <dt>Contact</dt><dd>{{ lead.name }}{% if lead.job_title %} · {{ lead.job_title }}{% endif %}</dd>
+        <dt>Email</dt><dd class="mono">{{ lead.email }}</dd>
+        <dt>Phone</dt><dd>{{ lead.phone or '—' }}</dd>
+      </dl>
+      <dl class="kv" style="grid-template-columns:120px 1fr">
+        <dt>Enrollment</dt><dd>{{ lead.student_count or '—' }}</dd>
+        <dt>Preferred date</dt><dd>{{ lead.preferred_date|pretty_date if lead.preferred_date else '—' }}</dd>
+        <dt>Focus areas</dt><dd>{{ lead.interests or '—' }}</dd>
+      </dl>
+    </div>
+    {% if lead.message %}
+      <hr class="divider">
+      <p class="muted" style="margin:0; font-size:.92rem"><b>Message:</b> {{ lead.message }}</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card"><div class="empty">
+  <strong>No demo requests{% if status %} marked “{{ status }}”{% endif %}</strong>
+  Requests submitted at <a href="{{ url_for('public.demo') }}">/demo</a> show up here.
+</div></div>
+{% endif %}
+{% endblock %}

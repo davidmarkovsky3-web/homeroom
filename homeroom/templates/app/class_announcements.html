@@ -1,0 +1,131 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'grades' %}
+{% block title %}{{ course.code }} announcements — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ course.name }} announcements</h1>
+    <div class="sub">
+      <span class="mono">{{ course.code }}</span> ·
+      {{ course.seats_taken }} students · seen only by this class
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('courses.detail', course_id=course.id) }}">Class page</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('grades.gradebook', course=course.id) }}">Gradebook</a>
+  </div>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head">
+      <h3>Posted to this class</h3>
+      <span class="badge">{{ announcements|length }}</span>
+    </div>
+    {% if announcements %}
+      <div class="stack">
+        {% for item in announcements %}
+        <div class="notice {{ 'urgent' if item.urgent }}" style="margin:0">
+          <div class="notice-icon">{{ '❗' if item.urgent else '📣' }}</div>
+          <div class="notice-body">
+            <b>{{ item.title }}</b>
+            {% if item.body %}<p>{{ item.body }}</p>{% endif %}
+            <div class="notice-meta">
+              <span class="badge badge-brand">{{ item.audience_label }}</span>
+              {% if not item.is_live %}<span class="badge badge-warn">Not live</span>{% endif %}
+              {{ item.starts_on|pretty_date }}
+              {% if item.expires_on %} – {{ item.expires_on|pretty_date }}{% endif %}
+              {% if item.due_on %} · <b>due {{ item.due_on|pretty_date }}</b>{% endif %}
+              {% if item.created_by %} · {{ item.created_by.full_name }}{% endif %}
+            </div>
+          </div>
+          <form method="post"
+                action="{{ url_for('notices.delete_announcement', announcement_id=item.id) }}"
+                onsubmit="return confirm('Remove “{{ item.title }}”?');">
+            <button class="btn btn-sm btn-ghost" type="submit">Remove</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty"><strong>Nothing posted yet</strong>
+        Anything you post here reaches this class only — not the whole school.</div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card card-tint">
+      <h3>Post to {{ course.code }}</h3>
+      <form method="post">
+        <div class="field">
+          <label for="title">Title *</label>
+          <input id="title" name="title" type="text" required
+                 placeholder="Bring your lab notebook Thursday">
+        </div>
+        <div class="field">
+          <label for="body">Message</label>
+          <textarea id="body" name="body" style="min-height:90px"></textarea>
+        </div>
+        <div class="field">
+          <label for="audience">Who sees it</label>
+          <select id="audience" name="audience">
+            <option value="families">Students and their guardians</option>
+            <option value="students">Students only</option>
+            <option value="parents">Guardians only</option>
+          </select>
+          <div class="field-hint">Limited to this class's roster either way.</div>
+        </div>
+
+        <fieldset>
+          <legend>Needs an action?</legend>
+          <div class="field">
+            <label for="action_label">Button text</label>
+            <input id="action_label" name="action_label" type="text"
+                   placeholder="Open the study guide">
+          </div>
+          <div class="field">
+            <label for="action_url">Link</label>
+            <input id="action_url" name="action_url" type="text" placeholder="/app/documents/">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label for="due_on">Due</label>
+            <input id="due_on" name="due_on" type="date">
+          </div>
+        </fieldset>
+
+        <div class="grid grid-2" style="gap:0 12px">
+          <div class="field">
+            <label for="starts_on">Show from</label>
+            <input id="starts_on" name="starts_on" type="date" value="{{ today.isoformat() }}">
+          </div>
+          <div class="field">
+            <label for="expires_on">Stop showing</label>
+            <input id="expires_on" name="expires_on" type="date">
+          </div>
+        </div>
+
+        <div class="check">
+          <input type="checkbox" id="urgent" name="urgent">
+          <label for="urgent">Urgent — pins to the top of their centre</label>
+        </div>
+        <div class="check">
+          <input type="checkbox" id="push" name="push" checked>
+          <label for="push">Also send as a personal notification</label>
+        </div>
+
+        <button class="btn btn-block" type="submit">Post to this class</button>
+      </form>
+    </div>
+
+    <div class="card card-tint">
+      <h3>Class vs school</h3>
+      <p class="muted" style="font-size:.9rem; margin:0">
+        These reach the {{ course.seats_taken }} students on this roster and, if you choose,
+        their guardians — nobody else. School-wide notices are posted by the office from
+        Administration.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

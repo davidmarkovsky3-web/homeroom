@@ -1,0 +1,54 @@
+{% extends "base_public.html" %}
+{% block title %}Thank you — Homeroom{% endblock %}
+
+{% block body %}
+<section class="section">
+  <div class="wrap-narrow">
+    <div class="card center">
+      <div style="font-size:2.6rem; line-height:1">✅</div>
+      {% if kind == 'demo' %}
+        <h1 style="font-size:1.7rem; margin-top:10px">Your demo request is in</h1>
+        <p class="muted">Thanks, {{ record.name.split()[0] }}. We'll email
+           <strong>{{ record.email }}</strong> within one business day to confirm a time.</p>
+        <div class="card card-tint" style="text-align:left; margin-top:20px">
+          <dl class="kv">
+            <dt>Reference</dt><dd class="mono">DEMO-{{ '%05d'|format(record.id) }}</dd>
+            <dt>Organization</dt><dd>{{ record.organization }}</dd>
+            {% if record.student_count %}<dt>Enrollment</dt><dd>{{ record.student_count }}</dd>{% endif %}
+            {% if record.preferred_date %}<dt>Preferred date</dt><dd>{{ record.preferred_date|pretty_date }}</dd>{% endif %}
+            {% if record.interests %}<dt>Focus areas</dt><dd>{{ record.interests }}</dd>{% endif %}
+          </dl>
+        </div>
+      {% else %}
+        <h1 style="font-size:1.7rem; margin-top:10px">Your quote request is in</h1>
+        <p class="muted">Thanks, {{ record.contact_name.split()[0] }}. A formal quote is on its way to
+           <strong>{{ record.contact_email }}</strong>. This is not an order and nothing has been charged.</p>
+        <div class="card card-tint" style="text-align:left; margin-top:20px">
+          <dl class="kv">
+            <dt>Reference</dt><dd class="mono">QUOTE-{{ '%05d'|format(record.id) }}</dd>
+            <dt>Organization</dt><dd>{{ record.organization }}</dd>
+            <dt>Plan</dt><dd style="text-transform:capitalize">{{ record.plan }}</dd>
+            <dt>Seats</dt><dd>{{ '{:,}'.format(record.seats) }}</dd>
+            <dt>Term</dt><dd>{{ record.term_length }}</dd>
+            {% if record.po_number %}<dt>PO number</dt><dd class="mono">{{ record.po_number }}</dd>{% endif %}
+            {% if record.add_ons %}<dt>Add-ons</dt><dd>{{ record.add_ons }}</dd>{% endif %}
+          </dl>
+          <p class="field-hint" style="margin-top:14px; margin-bottom:0">
+            No pricing is committed here. A person prepares the quote, applying multi-year
+            and add-on adjustments, and emails it to you.
+          </p>
+        </div>
+      {% endif %}
+
+      <div class="row" style="justify-content:center; margin-top:24px">
+        <a class="btn" href="{{ url_for('public.home') }}">Back to home</a>
+        {% if kind == 'demo' %}
+          <a class="btn btn-ghost" href="{{ url_for('public.purchase') }}">Request a quote too</a>
+        {% else %}
+          <a class="btn btn-ghost" href="{{ url_for('public.demo') }}">Book a demo too</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

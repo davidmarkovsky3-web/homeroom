@@ -1,0 +1,176 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'support' %}
+{% block title %}{{ support_label }} overview — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ support_label }} overview</h1>
+    <div class="sub">
+      {{ day.strftime('%A, %B %d, %Y').replace(' 0', ' ') }}
+      {% if period %} · {{ period.label }} ({{ period.time_range }}){% endif %}
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('support.overview', date=prev_day.isoformat()) }}">←</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('support.overview') }}">Today</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('support.overview', date=next_day.isoformat()) }}">→</a>
+  </div>
+</div>
+
+{% if blocks|length > 1 %}
+<div class="card" style="margin-bottom:18px; padding:14px 18px">
+  <div class="row" style="gap:8px">
+    <b style="font-size:.85rem; color:var(--ink-3)">Block:</b>
+    {% for block in blocks %}
+      <a class="btn btn-sm {{ 'btn-soft' if period and block.id == period.id else 'btn-ghost' }}"
+         href="{{ url_for('support.overview', date=day.isoformat(), period=block.id) }}">{{ block.label }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if period %}
+<div class="grid grid-4" style="margin-bottom:18px">
+  <div class="stat">
+    <div class="stat-label">Sessions offered</div>
+    <div class="stat-value">{{ sessions|length }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Students placed</div>
+    <div class="stat-value">{{ total_placed }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Unassigned</div>
+    <div class="stat-value" style="color:{{ 'var(--warn)' if unassigned else 'inherit' }}">
+      {{ unassigned|length }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Total capacity</div>
+    <div class="stat-value">{{ sessions | sum(attribute='capacity') }}</div>
+  </div>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head"><h3>Sessions</h3></div>
+    {% if sessions %}
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th>Session</th><th>Teacher</th><th>Type</th><th>Room</th>
+                <th class="num">Seats</th><th class="tight"></th></tr>
+          </thead>
+          <tbody>
+            {% for item in sessions %}
+            <tr>
+              <td><b>{{ item.name }}</b>
+                {% if item.signups | selectattr('locked') | list %}
+                  <span class="badge badge-warn">has assigned students</span>
+                {% endif %}
+              </td>
+              <td>{{ item.teacher.full_name if item.teacher else '—' }}</td>
+              <td><span class="badge {{ 'badge-accent' if item.kind == 'taught' else '' }}">
+                {{ item.kind_label }}</span></td>
+              <td>{{ item.location or '—' }}</td>
+              <td class="num" style="min-width:110px">
+                {{ item.seats_taken }}/{{ item.capacity }}
+                <div class="meter {{ 'meter-bad' if item.is_full else 'meter-ok' }}">
+                  <span style="width:{{ item.fill_percent }}%"></span>
+                </div>
+              </td>
+              <td class="tight">
+                <a class="btn btn-sm btn-ghost"
+                   href="{{ url_for('support.session_detail', session_id=item.id) }}">Roster</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty"><strong>No sessions</strong>
+        No teacher has published anything for this block.</div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    {% if sessions %}
+    <div class="card card-tint">
+      <h3>Assign a student</h3>
+      <p class="muted" style="font-size:.88rem">
+        An assigned placement is locked — the student can't move themselves out of it.
+      </p>
+      <form method="post" action="{{ url_for('support.assign') }}">
+        <div class="field">
+          <label for="student_id">Student</label>
+          <select id="student_id" name="student_id" required>
+            <option value="">— Choose a student —</option>
+            {% for student in unassigned %}
+              <option value="{{ student.id }}">{{ student.display_name }}
+                (grade {{ student.grade_level or '—' }}) — unassigned</option>
+            {% endfor %}
+            {% for item in sessions %}
+              {% for signup in item.signups %}
+                <option value="{{ signup.student.id }}">{{ signup.student.display_name }}
+                  — currently in {{ item.name }}</option>
+              {% endfor %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="session_id">Place into</label>
+          <select id="session_id" name="session_id" required>
+            {% for item in sessions %}
+              <option value="{{ item.id }}">{{ item.name }}
+                ({{ item.seats_taken }}/{{ item.capacity }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="note">Reason (shown to the student)</label>
+          <input id="note" name="note" type="text"
+                 placeholder="Making up a missed assessment">
+        </div>
+        <button class="btn btn-block" type="submit">Assign and lock</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Not signed up</h3>
+        <span class="badge {{ 'badge-warn' if unassigned else 'badge-ok' }}">{{ unassigned|length }}</span>
+      </div>
+      {% if unassigned %}
+        <div class="stack" style="max-height:340px; overflow-y:auto">
+          {% for student in unassigned[:40] %}
+          <div class="row-between" style="font-size:.88rem">
+            <span>{{ student.display_name }}</span>
+            <span class="muted">{{ student.grade_level or '—' }}</span>
+          </div>
+          {% endfor %}
+          {% if unassigned|length > 40 %}
+            <div class="muted" style="font-size:.85rem">
+              +{{ unassigned|length - 40 }} more</div>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="empty">Everyone has a session.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="empty">
+    <strong>No {{ support_label|lower }} block configured</strong>
+    Mark a period as a {{ support_label|lower }} block on the bell schedule screen to enable this.
+    <div style="margin-top:16px">
+      <a class="btn" href="{{ url_for('admin.bell_schedule') }}">Bell schedule</a>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

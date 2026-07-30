@@ -1,0 +1,118 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'documents' %}
+{% block title %}Upload a document — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Upload a document</h1>
+    <div class="sub">Posted to {{ school.name }}</div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('documents.index') }}">← Documents</a>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <form method="post" enctype="multipart/form-data">
+      <div class="field">
+        <label for="title">Title *</label>
+        <input id="title" name="title" type="text" required value="{{ form.get('title', '') }}">
+      </div>
+
+      <div class="field">
+        <label for="file">File *</label>
+        <input id="file" name="file" type="file" required>
+        <div class="field-hint">
+          Up to 15 MB. PDFs, Office and OpenDocument files, plain text, images and zips.
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" name="description"
+                  style="min-height:80px">{{ form.get('description', '') }}</textarea>
+      </div>
+
+      <div class="field">
+        <label for="category">Category</label>
+        <select id="category" name="category">
+          {% for option in categories %}
+            <option value="{{ option }}" {% if form.get('category') == option %}selected{% endif %}
+                    style="text-transform:capitalize">{{ option|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <fieldset>
+        <legend>Who can see it</legend>
+        <p class="field-hint" style="margin-top:0">
+          Leave these empty and everyone at the school can see the file. Each narrowing
+          applies on top of the others.
+        </p>
+        <div class="grid grid-2" style="gap:0 14px">
+          <div class="field">
+            <label for="course_id">Limit to a course</label>
+            <select id="course_id" name="course_id">
+              <option value="">Any course</option>
+              {% for course in courses %}
+                <option value="{{ course.id }}"
+                        {% if form.get('course_id')|string == course.id|string %}selected{% endif %}>
+                  {{ course.code }} — {{ course.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="grade_level">Limit to a grade</label>
+            <select id="grade_level" name="grade_level">
+              <option value="">All grades</option>
+              {% for grade in school.grade_range %}
+                <option value="{{ grade }}"
+                        {% if form.get('grade_level')|string == grade|string %}selected{% endif %}>
+                  Grade {{ grade }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="student_id">Limit to one student</label>
+          <select id="student_id" name="student_id">
+            <option value="">Not student-specific</option>
+            {% for student in students %}
+              <option value="{{ student.id }}"
+                      {% if form.get('student_id')|string == student.id|string %}selected{% endif %}>
+                {{ student.display_name }}{% if student.student_number %} ({{ student.student_number }}){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+          <div class="field-hint">
+            Use for individual records. The student and their linked guardians see it; nobody else does.
+          </div>
+        </div>
+        <div class="check">
+          <input type="checkbox" id="staff_only" name="staff_only"
+                 {% if form.get('staff_only') == 'on' %}checked{% endif %}>
+          <label for="staff_only"><b>Staff only</b><br>
+            <span class="muted" style="font-weight:400">Hidden from students and parents entirely.</span></label>
+        </div>
+      </fieldset>
+
+      <button class="btn" type="submit">Upload</button>
+      <a class="btn btn-ghost" href="{{ url_for('documents.index') }}">Cancel</a>
+    </form>
+  </div>
+
+  <div class="card card-tint">
+    <h3>A note on files</h3>
+    <p class="muted" style="font-size:.9rem">
+      Uploads always download as attachments rather than rendering in the browser, and
+      executable or scriptable formats aren't accepted. That keeps a shared document library
+      from becoming a way to run code in someone else's session.
+    </p>
+    <hr class="divider">
+    <p class="muted" style="font-size:.9rem; margin:0">
+      Student-specific documents are visible to that student and any guardian whose link
+      allows document access.
+    </p>
+  </div>
+</div>
+{% endblock %}

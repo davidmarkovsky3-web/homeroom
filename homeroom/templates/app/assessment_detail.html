@@ -1,0 +1,62 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'grades' %}
+{% block title %}{{ assessment.name }} — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ assessment.name }}</h1>
+    <div class="sub">
+      {{ assessment.subject }} · {{ assessment.administered_on|pretty_date }} ·
+      max {{ '%g'|format(assessment.max_score) }} ·
+      proficient at {{ '%g'|format(assessment.proficient_cutoff) }}
+    </div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('grades.analytics') }}">← Test scores</a>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Student results</h3>
+    <span class="badge">{{ rows|length }} students</span>
+  </div>
+  {% if rows %}
+    <div class="table-wrap" style="border:none">
+      <table>
+        <thead>
+          <tr><th>Student</th><th class="num">Grade</th><th class="num">Score</th>
+              <th class="num">%</th><th class="num">vs. state</th><th>Proficient</th>
+              <th class="tight"></th></tr>
+        </thead>
+        <tbody>
+          {% for result in rows %}
+          <tr class="{{ 'risk-row risk-watch' if not result.is_proficient }}">
+            <td><b>{{ result.student.display_name }}</b><br>
+              <small class="muted mono">{{ result.student.student_number or '—' }}</small></td>
+            <td class="num">{{ result.student.grade_level or '—' }}</td>
+            <td class="num"><b>{{ '%g'|format(result.score) }}</b></td>
+            <td class="num">{{ result.percent }}%</td>
+            <td class="num">
+              {% if result.vs_state is not none %}
+                <span style="color:{{ 'var(--ok)' if result.vs_state >= 0 else 'var(--bad)' }}">
+                  {{ '+' if result.vs_state > 0 }}{{ result.vs_state }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <span class="badge badge-{{ 'ok' if result.is_proficient else 'bad' }}">
+                {{ 'Yes' if result.is_proficient else 'Below' }}</span>
+            </td>
+            <td class="tight">
+              <a class="btn btn-sm btn-ghost"
+                 href="{{ url_for('grades.report', student=result.student.id) }}">Grades</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">No results recorded for students at this school.</div>
+  {% endif %}
+</div>
+{% endblock %}

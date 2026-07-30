@@ -1,0 +1,147 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'more' %}
+{% set active_sub = 'demographics' %}
+{% block title %}Demographics — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Student demographics</h1>
+    <div class="sub">{{ school.name }} · {{ totals.students }} students on roll</div>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:18px">
+  <div class="stat">
+    <div class="stat-label">Students</div>
+    <div class="stat-value">{{ '{:,}'.format(totals.students) }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">IEP</div>
+    <div class="stat-value">{{ totals.iep }}</div>
+    <div class="stat-note">individualized education plans</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">504 plans</div>
+    <div class="stat-value">{{ totals.plan504 }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Home languages</div>
+    <div class="stat-value">{{ totals.languages }}</div>
+    <div class="stat-note">distinct, where recorded</div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:18px; padding:16px 18px">
+  <form method="get" class="row" style="gap:10px">
+    <input type="text" name="q" value="{{ search }}" placeholder="Name or student ID"
+           style="max-width:260px">
+    <select name="grade" style="max-width:170px">
+      <option value="">All grades</option>
+      {% for level, count in by_grade.items() %}
+        <option value="{{ level }}" {% if grade == level %}selected{% endif %}>
+          Grade {{ level or '—' }} ({{ count }})</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-sm" type="submit">Filter</button>
+    {% if search or grade %}
+      <a class="btn btn-sm btn-ghost" href="{{ url_for('more.demographics') }}">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Roster</h3>
+    <span class="badge">{{ students|length }} shown</span>
+  </div>
+  {% if students %}
+    <div class="table-wrap" style="border:none">
+      <table>
+        <thead>
+          <tr><th>Student</th><th class="num">Grade</th>{% if uses_homeroom %}<th>{{ homeroom_label }}</th>{% endif %}
+              <th>Language</th><th>Counselor</th><th>Flags</th><th class="tight"></th></tr>
+        </thead>
+        <tbody>
+          {% for student in students %}
+          <tr>
+            <td>
+              <a href="{{ url_for('admin.user_detail', user_id=student.id) }}">
+                <b>{{ student.display_name }}</b></a><br>
+              <small class="muted mono">{{ student.student_number or '—' }}</small>
+            </td>
+            <td class="num">{{ student.grade_level or '—' }}</td>
+            {% if uses_homeroom %}<td class="muted">{{ student.homeroom or '—' }}</td>{% endif %}
+            <td class="muted">{{ student.home_language or '—' }}</td>
+            <td class="muted">{{ student.counselor or '—' }}</td>
+            <td>
+              {% if student.has_iep %}<span class="badge badge-info">IEP</span>{% endif %}
+              {% if student.has_504 %}<span class="badge badge-info">504</span>{% endif %}
+              {% if not student.has_iep and not student.has_504 %}<span class="muted">—</span>{% endif %}
+            </td>
+            <td class="tight">
+              <details>
+                <summary class="btn btn-sm btn-ghost" style="list-style:none">Edit</summary>
+                <form method="post"
+                      action="{{ url_for('more.save_demographics', student_id=student.id) }}"
+                      class="card card-tint" style="margin-top:8px; min-width:260px; text-align:left">
+                  <div class="field">
+                    <label>Home language</label>
+                    <input name="home_language" type="text" value="{{ student.home_language or '' }}">
+                  </div>
+                  <div class="field">
+                    <label>Counselor</label>
+                    <input name="counselor" type="text" value="{{ student.counselor or '' }}">
+                  </div>
+                  <div class="grid grid-2" style="gap:0 10px">
+                    <div class="field">
+                      <label>Locker</label>
+                      <input name="locker" type="text" value="{{ student.locker or '' }}">
+                    </div>
+                    <div class="field">
+                      <label>Bus route</label>
+                      <input name="bus_route" type="text" value="{{ student.bus_route or '' }}">
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label>Enrolled on</label>
+                    <input name="enrolled_on" type="date"
+                           value="{{ student.enrolled_on.isoformat() if student.enrolled_on else '' }}">
+                  </div>
+                  <div class="check">
+                    <input type="checkbox" id="iep-{{ student.id }}" name="has_iep"
+                           {% if student.has_iep %}checked{% endif %}>
+                    <label for="iep-{{ student.id }}">IEP on file</label>
+                  </div>
+                  <div class="check">
+                    <input type="checkbox" id="p504-{{ student.id }}" name="has_504"
+                           {% if student.has_504 %}checked{% endif %}>
+                    <label for="p504-{{ student.id }}">504 plan on file</label>
+                  </div>
+                  <div class="field">
+                    <label>Office notes</label>
+                    <textarea name="notes" style="min-height:60px">{{ student.notes or '' }}</textarea>
+                  </div>
+                  <button class="btn btn-sm btn-block" type="submit">Save</button>
+                </form>
+              </details>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty"><strong>No students match</strong>Try a different filter.</div>
+  {% endif %}
+</div>
+
+<div class="card card-tint" style="margin-top:18px">
+  <h3>A note on this data</h3>
+  <p class="muted" style="font-size:.9rem; margin:0">
+    IEP and 504 flags are deliberately just flags — this records that a plan exists so staff
+    know to look it up, not the plan's contents. Real special-education records belong in a
+    system built for them, with the access controls that implies.
+  </p>
+</div>
+{% endblock %}

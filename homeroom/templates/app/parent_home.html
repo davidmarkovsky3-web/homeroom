@@ -1,0 +1,105 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'home' %}
+{% block title %}Family — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Good {{ 'morning' if now.hour < 12 else ('afternoon' if now.hour < 17 else 'evening') }}, {{ current_user.known_as }}</h1>
+    <div class="sub">
+      {{ today.strftime('%A, %B %d, %Y').replace(' 0', ' ') }} ·
+      {{ children|length }} student{{ '' if children|length == 1 else 's' }} linked
+    </div>
+  </div>
+</div>
+
+{% if children %}
+<div class="stack">
+  {% for entry in children %}
+  <div class="card">
+    <div class="card-head">
+      <div class="row">
+        <div class="avatar" style="width:42px; height:42px; font-size:.95rem">
+          {{ entry.student.initials }}</div>
+        <div>
+          <h3 style="margin:0">{{ entry.student.full_name }}</h3>
+          <div class="muted" style="font-size:.84rem">
+            {{ entry.link.relationship_label }} ·
+            Grade {{ entry.student.grade_level or '—' }} ·
+            <span class="mono">{{ entry.student.student_number or '—' }}</span>
+            {% if entry.student.school %} · {{ entry.student.school.name }}{% endif %}
+          </div>
+        </div>
+      </div>
+      <a class="btn btn-sm" href="{{ url_for('parents.child', student_id=entry.student.id) }}">
+        Full record</a>
+    </div>
+
+    {% if entry.risk.level != 'none' %}
+    <div class="card {{ 'risk-high' if entry.risk.level == 'high' else 'risk-watch' }} risk-row"
+         style="margin-bottom:14px; box-shadow:none">
+      <b style="font-size:.9rem">
+        {{ 'Worth a conversation' if entry.risk.level == 'high' else 'Worth watching' }}</b>
+      <ul class="risk-reasons" style="margin:5px 0 0; padding-left:18px">
+        {% for reason in entry.risk.reasons %}<li>{{ reason }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-4" style="gap:12px">
+      <div class="stat">
+        <div class="stat-label">Average</div>
+        {% if entry.report %}
+          <div class="stat-value" style="color:{{ entry.report.average|grade_color }}">
+            {{ entry.report.average|pct if entry.report.average is not none else '—' }}</div>
+        {% else %}
+          <div class="stat-value muted">—</div>
+          <div class="stat-note">Not shared</div>
+        {% endif %}
+      </div>
+      <div class="stat">
+        <div class="stat-label">Attendance</div>
+        {% if entry.attendance %}
+          <div class="stat-value">{{ entry.attendance.rate }}%</div>
+          <div class="stat-note">{{ entry.attendance.totals.absent }} absences</div>
+        {% else %}
+          <div class="stat-value muted">—</div>
+          <div class="stat-note">Not shared</div>
+        {% endif %}
+      </div>
+      <div class="stat">
+        <div class="stat-label">Missing work</div>
+        <div class="stat-value" style="color:{{ 'var(--bad)' if entry.report and entry.report.missing_total else 'inherit' }}">
+          {{ entry.report.missing_total if entry.report else '—' }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Due soon</div>
+        <div class="stat-value">{{ entry.upcoming|length }}</div>
+        <div class="stat-note">next two weeks</div>
+      </div>
+    </div>
+
+    {% set day_rows = entry.schedule.rows | selectattr('course') | list %}
+    {% if day_rows %}
+      <hr class="divider">
+      <div class="stat-label" style="margin-bottom:8px">Today's schedule</div>
+      <div class="row" style="gap:8px">
+        {% for row in day_rows %}
+          <span class="badge {{ 'badge-brand' if row.state == 'current' else '' }}">
+            {{ row.period.name }}: {{ row.course.name }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="empty">
+    <strong>No students linked to this account</strong>
+    A parent account only shows the students it's linked to. Contact the school office to
+    have your child linked to this account.
+  </div>
+</div>
+{% endif %}
+{% endblock %}

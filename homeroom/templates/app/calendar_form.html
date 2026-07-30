@@ -1,0 +1,119 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'calendar' %}
+{% block title %}Add event — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Add a calendar event</h1>
+    <div class="sub">Visible to everyone unless you scope it to a course or grade level</div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('calendar.index') }}">← Back to calendar</a>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <form method="post">
+      <div class="field">
+        <label for="title">Title *</label>
+        <input id="title" name="title" type="text" required value="{{ form.get('title', '') }}">
+      </div>
+
+      <div class="grid grid-2" style="gap:0 16px">
+        <div class="field">
+          <label for="event_date">Date *</label>
+          <input id="event_date" name="event_date" type="date" required
+                 value="{{ form.get('event_date', '') }}">
+        </div>
+        <div class="field">
+          <label for="category">Category</label>
+          <select id="category" name="category">
+            {% for category in categories %}
+              <option value="{{ category }}" {% if form.get('category') == category %}selected{% endif %}
+                      style="text-transform:capitalize">{{ category|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="check">
+        <input type="checkbox" id="all_day" name="all_day"
+               {% if form.get('all_day') == 'on' %}checked{% endif %}>
+        <label for="all_day">All-day event</label>
+      </div>
+
+      <div class="grid grid-2" style="gap:0 16px" id="times">
+        <div class="field">
+          <label for="start_time">Start time</label>
+          <input id="start_time" name="start_time" type="time" value="{{ form.get('start_time', '') }}">
+        </div>
+        <div class="field">
+          <label for="end_time">End time</label>
+          <input id="end_time" name="end_time" type="time" value="{{ form.get('end_time', '') }}">
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="gap:0 16px">
+        <div class="field">
+          <label for="course_id">Limit to a course</label>
+          <select id="course_id" name="course_id">
+            <option value="">Everyone</option>
+            {% for course in my_courses %}
+              <option value="{{ course.id }}" {% if form.get('course_id')|string == course.id|string %}selected{% endif %}>
+                {{ course.code }} — {{ course.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="grade_level">Limit to a grade</label>
+          <select id="grade_level" name="grade_level">
+            <option value="">All grades</option>
+            {% for grade in [9, 10, 11, 12] %}
+              <option value="{{ grade }}" {% if form.get('grade_level')|string == grade|string %}selected{% endif %}>
+                Grade {{ grade }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" name="description">{{ form.get('description', '') }}</textarea>
+      </div>
+
+      <button class="btn" type="submit">Add event</button>
+      <a class="btn btn-ghost" href="{{ url_for('calendar.index') }}">Cancel</a>
+    </form>
+  </div>
+
+  <div class="card card-tint">
+    <h3>Scoping</h3>
+    <p class="muted" style="font-size:.88rem">
+      Leave both limits empty and the event shows on everyone's calendar. Scope it to a course
+      and only the students on that roster see it — useful for unit tests and project deadlines.
+    </p>
+    <hr class="divider">
+    <h3>Categories</h3>
+    <div class="legend" style="flex-direction:column; gap:7px">
+      <span><i style="background:var(--bad)"></i>Exam</span>
+      <span><i style="background:var(--warn)"></i>Holiday</span>
+      <span><i style="background:var(--info)"></i>Assembly</span>
+      <span><i style="background:var(--brand)"></i>Deadline</span>
+      <span><i style="background:var(--accent)"></i>Sports</span>
+      <span><i style="background:var(--ink-3)"></i>Activity</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var allDay = document.getElementById('all_day');
+    var times = document.getElementById('times');
+    function sync() { times.style.display = allDay.checked ? 'none' : ''; }
+    allDay.addEventListener('change', sync);
+    sync();
+  })();
+</script>
+{% endblock %}

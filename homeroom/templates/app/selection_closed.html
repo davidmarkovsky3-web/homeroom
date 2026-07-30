@@ -1,0 +1,23 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'selection' %}
+{% block title %}Course Selection — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Course Selection</h1>
+    <div class="sub">Ranked course requests for next year</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="empty">
+    <strong>No selection window is open</strong>
+    Your school hasn't opened course selection yet. You'll see it here — and on your Home
+    dashboard — as soon as it opens.
+    <div style="margin-top:18px">
+      <a class="btn btn-ghost" href="{{ url_for('courses.catalog') }}">Browse the course catalog</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

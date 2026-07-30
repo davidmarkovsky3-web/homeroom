@@ -1,0 +1,150 @@
+{% extends "base_public.html" %}
+{% block title %}Homeroom — the SIS your school will actually use{% endblock %}
+
+{% block body %}
+<section class="hero">
+  <div class="wrap center">
+    <span class="eyebrow">Student Information System</span>
+    <h1>Every schedule, every absence, every course request.</h1>
+    <p class="lead">
+      Homeroom replaces the tangle of spreadsheets, paper request forms and legacy portals
+      with one system that students, teachers and administrators all sign into.
+    </p>
+    <div class="row" style="justify-content:center">
+      <a class="btn btn-lg" href="{{ url_for('public.demo') }}">Request a demo</a>
+      <a class="btn btn-lg btn-ghost" href="{{ url_for('public.purchase') }}">Request a quote</a>
+    </div>
+    <p class="muted" style="margin-top:16px; font-size:.86rem">
+      No credit card. Demo environments are provisioned within two business days.
+    </p>
+  </div>
+</section>
+
+<section class="wrap" style="padding-bottom:72px">
+  <div class="screenshot">
+    <div class="screenshot-bar"><i></i><i></i><i></i></div>
+    <div class="screenshot-body">
+      <div class="grid grid-4" style="gap:14px">
+        <div class="stat"><div class="stat-label">Enrolled students</div><div class="stat-value">1,284</div><div class="stat-note">Across 4 grade levels</div></div>
+        <div class="stat"><div class="stat-label">Attendance today</div><div class="stat-value">96.2%</div><div class="meter meter-ok"><span style="width:96%"></span></div></div>
+        <div class="stat"><div class="stat-label">Course requests</div><div class="stat-value">7,704</div><div class="stat-note">1st + 2nd picks submitted</div></div>
+        <div class="stat"><div class="stat-label">Sections</div><div class="stat-value">212</div><div class="stat-note">88% seat utilization</div></div>
+      </div>
+      <div class="grid grid-2" style="margin-top:16px">
+        <div class="card card-tint">
+          <div class="card-head"><h3>Today · A Day</h3><span class="badge badge-brand">Period 3</span></div>
+          <ul class="timeline">
+            <li class="past"><span class="time">8:00 AM</span><div class="body"><b>AP Calculus AB</b><span>Rm 214 · Delacroix</span></div></li>
+            <li class="current"><span class="time">9:54 AM</span><div class="body"><b>Chemistry</b><span>Rm 303 · Raghunathan</span></div><span class="badge badge-brand">Now</span></li>
+            <li><span class="time">10:51 AM</span><div class="body"><b>American Literature</b><span>Rm 108 · Vasquez</span></div></li>
+          </ul>
+        </div>
+        <div class="card card-tint">
+          <div class="card-head"><h3>Course selection</h3><span class="badge badge-ok">Open</span></div>
+          <div class="slot-card" style="margin:0 0 10px">
+            <div class="row"><span class="slot-num">1</span><b>Mathematics requirement</b></div>
+            <div class="pick-grid">
+              <div><div class="pick-tag pick-1">1st pick</div><div>MTH410 · AP Calculus AB</div></div>
+              <div><div class="pick-tag pick-2">2nd pick</div><div>MTH310 · Pre-Calculus</div></div>
+            </div>
+          </div>
+          <div class="slot-card" style="margin:0">
+            <div class="row"><span class="slot-num">2</span><b>Science requirement</b></div>
+            <div class="pick-grid">
+              <div><div class="pick-tag pick-1">1st pick</div><div>SCI340 · AP Physics 1</div></div>
+              <div><div class="pick-tag pick-2">2nd pick</div><div>SCI230 · Chemistry</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-tint">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>One system, three very different jobs</h2>
+      <p>Homeroom gives each role exactly the screens they need — and nothing they don't.</p>
+    </div>
+    <div class="grid grid-3">
+      <div class="feature">
+        <div class="feature-icon">🎓</div>
+        <h3>Students</h3>
+        <p>A home dashboard, a live "where am I supposed to be" schedule, the school calendar,
+           their own attendance record, and course selection with ranked 1st and 2nd picks.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📋</div>
+        <h3>Teachers</h3>
+        <p>Period-by-period rosters, one-tap attendance from a phone during passing time,
+           course-scoped calendar events, and a running view of who has been missing class.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🏛️</div>
+        <h3>Administrators</h3>
+        <p>Accounts, sections, bell schedules, the A/B rotation calendar, school-wide attendance
+           rates, course request approvals, and the incoming demo and purchase pipeline.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>What's inside</h2>
+      <p>Six core modules, all sharing the same roster and calendar.</p>
+    </div>
+    <div class="grid grid-3">
+      <div class="feature"><div class="feature-icon">🏠</div><h3>Home</h3>
+        <p>A role-aware dashboard: what's next, what's due, what needs your attention today.</p></div>
+      <div class="feature"><div class="feature-icon">📅</div><h3>Calendar</h3>
+        <p>Month grid with A/B rotation days, no-school days, exams, assemblies and course events.</p></div>
+      <div class="feature"><div class="feature-icon">🗓️</div><h3>Schedule</h3>
+        <p>The full Monday–Friday grid showing which sections meet on which rotation day.</p></div>
+      <div class="feature"><div class="feature-icon">📱</div><h3>Responsive schedule</h3>
+        <p>A phone-first single-day view with a live countdown to the end of the current period.</p></div>
+      <div class="feature"><div class="feature-icon">✅</div><h3>Course selection</h3>
+        <p>Ranked requests with a required 1st pick and an optional 2nd pick alternate per slot.</p></div>
+      <div class="feature"><div class="feature-icon">📊</div><h3>Attendance</h3>
+        <p>Present, absent, tardy and excused — per period, with term totals and chronic-absence flags.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-tint">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Simple, per-student pricing</h2>
+      <p>Billed annually. Every plan includes unlimited staff accounts.</p>
+    </div>
+    <div class="grid grid-3">
+      {% for key, plan in plans.items() %}
+      <div class="price-card {% if plan.popular %}featured{% endif %}">
+        {% if plan.popular %}<span class="badge badge-brand" style="align-self:flex-start; margin-bottom:10px">Most popular</span>{% endif %}
+        <h3>{{ plan.name }}</h3>
+        <p class="muted" style="font-size:.9rem">{{ plan.blurb }}</p>
+        <div class="amount">${{ '%.2f'|format(plan.price_per_student) }}</div>
+        <div class="muted" style="font-size:.85rem">per student, per year</div>
+        <ul>{% for feature in plan.features %}<li>{{ feature }}</li>{% endfor %}</ul>
+        <a class="btn {% if not plan.popular %}btn-ghost{% endif %} btn-block"
+           href="{{ url_for('public.purchase', plan=key) }}">Request a quote</a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap-narrow center">
+    <h2>See it with your own bell schedule</h2>
+    <p class="muted">We'll load a sample of your courses and periods before the call, so you're
+       looking at your school — not a generic sandbox.</p>
+    <div class="row" style="justify-content:center; margin-top:20px">
+      <a class="btn btn-lg" href="{{ url_for('public.demo') }}">Request a demo</a>
+      <a class="btn btn-lg btn-ghost" href="{{ url_for('public.purchase') }}">Request a quote</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,190 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'more' %}
+{% set active_sub = 'import' %}
+{% block title %}Bulk import — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Bulk import</h1>
+    <div class="sub">Load records into {{ school.name }} from a file or pasted text</div>
+  </div>
+</div>
+
+<div class="pill-nav" style="margin-bottom:16px">
+  {% for key, spec in templates.items() %}
+    <a href="{{ url_for('importer.index', kind=key) }}"
+       class="{{ 'active' if kind == key }}">{{ spec.label }}</a>
+  {% endfor %}
+</div>
+
+{% if results %}
+<div class="card" style="margin-bottom:18px">
+  <div class="card-head">
+    <h3>Result</h3>
+    <div class="row">
+      <span class="badge badge-ok">{{ results.created }} created</span>
+      {% if results.skipped %}<span class="badge badge-warn">{{ results.skipped }} skipped</span>{% endif %}
+      <span class="badge">{{ results.total }} rows</span>
+    </div>
+  </div>
+  <div class="table-wrap" style="border:none; max-height:420px; overflow-y:auto">
+    <table>
+      <thead><tr><th class="num">Line</th><th>Record</th><th>Result</th><th>Detail</th></tr></thead>
+      <tbody>
+        {% for row in results.rows %}
+        <tr class="{{ 'risk-row risk-watch' if row.status == 'skipped' }}">
+          <td class="num muted">{{ row.line }}</td>
+          <td><b>{{ row.label }}</b></td>
+          <td>
+            <span class="badge badge-{{ 'ok' if row.status == 'created' else 'warn' }}">
+              {{ row.status }}</span>
+          </td>
+          <td class="muted" style="font-size:.85rem">{{ row.message }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if results.created %}
+    <p class="field-hint" style="margin-top:12px">
+      Any individual passwords above are shown only once — copy them before leaving this
+      page. Everyone created here must choose their own password at first sign-in.
+    </p>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head"><h3>Import {{ templates[kind].label|lower }}</h3></div>
+    <form method="post" enctype="multipart/form-data">
+      <input type="hidden" name="kind" value="{{ kind }}">
+
+      <div class="field">
+        <label for="file">Upload a file</label>
+        <input id="file" name="file" type="file" accept=".csv,.txt,.tsv">
+        <div class="field-hint">CSV or tab-separated text, with a header row. UTF-8 preferred.</div>
+      </div>
+
+      <div class="field">
+        <label for="pasted">…or paste the rows</label>
+        <textarea id="pasted" name="pasted" style="min-height:180px; font-family:var(--mono); font-size:.84rem"
+                  placeholder="{{ templates[kind].sample }}"></textarea>
+      </div>
+
+      {% if kind in ('students', 'staff') %}
+      <fieldset>
+        <legend>Initial passwords</legend>
+        <p class="field-hint" style="margin-top:0">
+          Whichever you pick, everyone is <b>forced to choose their own password the first
+          time they sign in</b> — they can't reach anything until they do.
+        </p>
+        {% for key, spec in password_modes.items() %}
+        <div class="check">
+          <input type="radio" id="pw-{{ key }}" name="password_mode" value="{{ key }}"
+                 {% if mode == key %}checked{% endif %}>
+          <label for="pw-{{ key }}"><b>{{ spec.label }}</b><br>
+            <span class="muted" style="font-weight:400">{{ spec.hint }}</span></label>
+        </div>
+        {% endfor %}
+        <div class="field" id="shared-field" style="margin-bottom:0">
+          <label for="shared_password">Batch password</label>
+          <input id="shared_password" name="shared_password" type="text"
+                 value="{{ shared }}" placeholder="e.g. Northfield2026"
+                 style="max-width:280px">
+          <div class="field-hint">
+            At least 6 characters. Say it once at assembly or print it on the handout —
+            you won't need to give anyone an individual secret.
+          </div>
+        </div>
+      </fieldset>
+      {% endif %}
+
+      <div class="check">
+        <input type="checkbox" id="dry_run" name="dry_run" checked>
+        <label for="dry_run"><b>Preview first</b><br>
+          <span class="muted" style="font-weight:400">Validate every row and show what would
+            happen, without saving. Uncheck to actually import.</span></label>
+      </div>
+
+      <button class="btn btn-lg" type="submit">Run import</button>
+    </form>
+  </div>
+
+  <div class="stack">
+    <div class="card card-tint">
+      <h3>Columns</h3>
+      <p class="muted" style="font-size:.88rem; margin-bottom:8px">
+        Header names are matched case-insensitively; spaces become underscores. Extra
+        columns are ignored.
+      </p>
+      <div class="stat-label">Required</div>
+      <div class="row" style="gap:5px; margin:6px 0 12px">
+        {% for column in templates[kind].required %}
+          <span class="badge badge-bad mono">{{ column }}</span>
+        {% endfor %}
+      </div>
+      {% if templates[kind].optional %}
+        <div class="stat-label">Optional</div>
+        <div class="row" style="gap:5px; margin-top:6px">
+          {% for column in templates[kind].optional %}
+            {% if not (column == 'homeroom' and not uses_homeroom) %}
+              <span class="badge mono">{{ column }}</span>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <p class="field-hint" style="margin-top:10px; margin-bottom:0">
+          Leave out any optional column you don't use — the import doesn't need it.
+          {% if kind == 'students' and not uses_homeroom %}
+            This school has homerooms turned off, so a <span class="mono">homeroom</span>
+            column would be ignored.
+          {% endif %}
+        </p>
+      {% endif %}
+    </div>
+
+    <div class="card card-tint">
+      <h3>Example</h3>
+      <pre class="mono" style="font-size:.75rem; overflow-x:auto; background:var(--bg);
+                               padding:12px; border-radius:8px; margin:0; white-space:pre">{{ templates[kind].sample }}</pre>
+    </div>
+
+    <div class="card card-tint">
+      <h3>How it behaves</h3>
+      <ul class="muted" style="font-size:.88rem; padding-left:18px; margin:0">
+        <li style="margin-bottom:6px">A bad row is skipped with a reason — it never stops the rest.</li>
+        <li style="margin-bottom:6px">Duplicate emails and existing records are skipped, not overwritten.</li>
+        <li style="margin-bottom:6px">New accounts must choose their own password at first sign-in.</li>
+        {% if kind == 'students' %}
+          <li style="margin-bottom:6px">A <span class="mono">guardian_email</span> creates and links a
+            parent account in the same pass.</li>
+        {% endif %}
+        {% if kind == 'courses' %}
+          <li style="margin-bottom:6px"><span class="mono">period</span> must match an existing slot name,
+            and <span class="mono">teacher_email</span> an existing staff account.</li>
+          <li style="margin-bottom:6px"><span class="mono">rigor</span> of honors or ap sets the weighted-GPA bonus.</li>
+        {% endif %}
+        {% if kind == 'enrollments' %}
+          <li style="margin-bottom:6px">Period clashes and full sections are refused.</li>
+        {% endif %}
+        <li>Preview mode rolls everything back, so it's safe to run repeatedly.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<script>
+  (function () {
+    var field = document.getElementById('shared-field');
+    if (!field) return;
+    function sync() {
+      var chosen = document.querySelector('input[name=password_mode]:checked');
+      field.style.display = (chosen && chosen.value === 'shared') ? '' : 'none';
+    }
+    document.querySelectorAll('input[name=password_mode]').forEach(function (r) {
+      r.addEventListener('change', sync);
+    });
+    sync();
+  })();
+</script>
+{% endblock %}

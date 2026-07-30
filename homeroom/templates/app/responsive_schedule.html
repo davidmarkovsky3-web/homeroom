@@ -1,0 +1,232 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'today' %}
+{% block title %}Today — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ 'Today' if day == today else day.strftime('%A') }}</h1>
+    <div class="sub">
+      {{ day.strftime('%B %d, %Y').replace(' 0', ' ') }} ·
+      <strong>{{ schedule.day_label if schedule.in_session else 'No school' }}</strong>
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('main.responsive_schedule', date=prev_day.isoformat()) }}">←</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('main.responsive_schedule') }}">Today</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('main.responsive_schedule', date=next_day.isoformat()) }}">→</a>
+  </div>
+</div>
+
+{% if day == today %}
+  {% if current_row and current_row.course %}
+    <div class="now-card" id="now-card" style="margin-bottom:18px">
+      <div class="row-between" style="align-items:flex-start">
+        <div style="min-width:0">
+          <div class="label" id="now-label">Right now · {{ current_row.period.label }}</div>
+          <h2 id="now-title">{{ current_row.course.name }}</h2>
+          <div class="meta" id="now-meta">
+            Room {{ current_row.course.room or '—' }}
+            {% if current_row.course.teacher %}· {{ current_row.course.teacher.full_name }}{% endif %}
+          </div>
+        </div>
+        <div class="right">
+          <div class="countdown" id="countdown">{{ countdown.minutes if countdown else '—' }}</div>
+          <div style="font-size:.78rem; opacity:.9" id="countdown-label">min {{ countdown.label if countdown else '' }}</div>
+        </div>
+      </div>
+      {% if next_row and next_row.course %}
+        <div style="margin-top:16px; padding-top:14px; border-top:1px solid rgba(255,255,255,.25); font-size:.88rem">
+          <span style="opacity:.8">Next:</span>
+          <strong>{{ next_row.course.name }}</strong>
+          <span style="opacity:.8">at {{ next_row.start_time|pretty_time }}
+            · Rm {{ next_row.course.room or '—' }}</span>
+        </div>
+      {% endif %}
+    </div>
+  {% elif next_row and next_row.course %}
+    <div class="now-card idle" id="now-card" style="margin-bottom:18px">
+      <div class="row-between" style="align-items:flex-start">
+        <div style="min-width:0">
+          <div class="label" id="now-label">Up next · {{ next_row.period.label }}</div>
+          <h2 id="now-title">{{ next_row.course.name }}</h2>
+          <div class="meta" id="now-meta">
+            Room {{ next_row.course.room or '—' }} · starts {{ next_row.start_time|pretty_time }}
+          </div>
+        </div>
+        <div class="right">
+          <div class="countdown" id="countdown">{{ countdown.minutes if countdown else '—' }}</div>
+          <div style="font-size:.78rem; opacity:.9" id="countdown-label">min {{ countdown.label if countdown else '' }}</div>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="now-card idle" id="now-card" style="margin-bottom:18px">
+      <div class="label">Schedule</div>
+      <h2>{{ 'Day complete' if schedule.day_type else 'No school today' }}</h2>
+      <div class="meta">
+        {% if schedule.day_type %}Nothing left on today's schedule.
+        {% else %}Enjoy the day off.{% endif %}
+      </div>
+    </div>
+  {% endif %}
+{% endif %}
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head">
+      <h3>{{ day.strftime('%A') }}'s schedule</h3>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('main.schedule', week=day.isoformat()) }}">Week view</a>
+    </div>
+
+    {% if schedule.rows %}
+      <ul class="timeline">
+        {% for row in schedule.rows %}
+        <li class="{{ row.state if day == today else '' }} {{ 'free' if not row.course }}">
+          <span class="time">
+            {{ row.start_time|pretty_time }}<br>
+            <span style="opacity:.65">{{ row.end_time|pretty_time }}</span>
+          </span>
+          <div class="body">
+            {% if row.course %}
+              <b><a href="{{ url_for('courses.detail', course_id=row.course.id) }}"
+                    style="color:inherit">{{ row.course.name }}</a></b>
+              <span>
+                {{ row.period.label }} · Rm {{ row.course.room or '—' }}
+                {% if current_user.is_student %}
+                  {% if row.course.teacher %}· {{ row.course.teacher.full_name }}{% endif %}
+                {% else %}
+                  · {{ row.course.seats_taken }} students
+                {% endif %}
+              </span>
+            {% elif row.support %}
+              {% set item = row.support.session if row.support.session is defined else row.support %}
+              <b>{{ item.name }}
+                {% if row.support.locked is defined and row.support.locked %}
+                  <span class="badge badge-warn">🔒 Assigned</span>{% endif %}
+              </b>
+              <span>
+                {{ row.period.label }} · {{ support_label }} · Rm {{ item.location or '—' }}
+                {% if current_user.is_student %}
+                  {% if item.teacher %}· {{ item.teacher.full_name }}{% endif %}
+                {% else %}
+                  · {{ item.seats_taken }} signed up
+                {% endif %}
+              </span>
+            {% elif row.period.is_support %}
+              <b class="muted">{{ row.period.label }}</b>
+              <span>
+                <a href="{{ url_for('support.index') }}">
+                  {{ 'Choose a session' if current_user.is_student else 'Publish a session' }}</a>
+              </span>
+            {% else %}
+              <b class="muted">{{ row.period.label }}</b>
+              <span>{{ 'Lunch' if 'Lunch' in row.period.name else 'Free period' }}</span>
+            {% endif %}
+          </div>
+          {% if day == today and row.state == 'current' %}
+            <span class="badge badge-brand">Now</span>
+          {% endif %}
+          {% if row.course and current_user.is_teacher %}
+            <a class="btn btn-sm btn-ghost hide-sm"
+               href="{{ url_for('attendance.take', course=row.course.id, date=day.isoformat()) }}">Attendance</a>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty"><strong>No bell schedule defined</strong>
+        An administrator needs to set up periods.</div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head">
+        <h3>On the calendar</h3>
+        <a class="btn btn-ghost btn-sm"
+           href="{{ url_for('calendar.day_detail', day=day.isoformat()) }}">Day detail</a>
+      </div>
+      {% if events %}
+        <div class="stack">
+          {% for event in events %}
+          <div>
+            <div class="row" style="gap:8px">
+              <span class="badge ev-{{ event.category }}" style="text-transform:capitalize">{{ event.category }}</span>
+              <b style="font-size:.92rem">{{ event.title }}</b>
+            </div>
+            <div class="muted" style="font-size:.82rem; margin-top:2px">{{ event.time_label }}</div>
+            {% if event.description %}
+              <div class="muted" style="font-size:.85rem; margin-top:4px">{{ event.description }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">Nothing scheduled for this day.</div>
+      {% endif %}
+    </div>
+
+    <div class="card card-tint">
+      <h3>Bell schedule</h3>
+      <div class="stack" style="margin-top:10px">
+        {% for row in schedule.rows %}
+        <div class="row-between" style="font-size:.85rem">
+          <span class="muted">{{ row.period.label }}</span>
+          <span class="mono">{{ row.time_range }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if day == today %}
+<script>
+  // Keep the "right now" card in sync without a full page reload.
+  (function () {
+    var card = document.getElementById('now-card');
+    if (!card) return;
+
+    function refresh() {
+      fetch('{{ url_for("main.api_now") }}', { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data) return;
+          var title = document.getElementById('now-title');
+          var meta = document.getElementById('now-meta');
+          var label = document.getElementById('now-label');
+          var count = document.getElementById('countdown');
+          var countLabel = document.getElementById('countdown-label');
+
+          if (data.current && data.current.course) {
+            card.classList.remove('idle');
+            if (label) label.textContent = 'Right now · ' + data.current.period;
+            if (title) title.textContent = data.current.course;
+            if (meta) meta.textContent = 'Room ' + (data.current.room || '—') +
+              (data.current.teacher ? ' · ' + data.current.teacher : '');
+            if (count) count.textContent = data.minutes_left;
+            if (countLabel) countLabel.textContent = 'min left in this period';
+          } else if (data.next && data.next.course) {
+            card.classList.add('idle');
+            if (label) label.textContent = 'Up next · ' + data.next.period;
+            if (title) title.textContent = data.next.course;
+            if (meta) meta.textContent = 'Room ' + (data.next.room || '—') +
+              ' · starts ' + data.next.starts;
+            if (count) count.textContent = data.minutes_until_next;
+            if (countLabel) countLabel.textContent = 'min until it starts';
+          }
+        })
+        .catch(function () { /* offline — leave the last known state on screen */ });
+    }
+
+    setInterval(refresh, 30000);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) refresh();
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

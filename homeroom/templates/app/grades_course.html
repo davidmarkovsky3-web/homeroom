@@ -1,0 +1,119 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'grades' %}
+{% block title %}{{ course.code }} grades — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ course.name }}</h1>
+    <div class="sub">
+      <span class="mono">{{ course.code }}</span> ·
+      {{ course.teacher.full_name if course.teacher else 'Staff TBD' }}
+      {% if staff_view %} · {{ student.full_name }}{% endif %}
+    </div>
+  </div>
+  <a class="btn btn-ghost btn-sm"
+     href="{{ url_for('grades.report') }}{% if staff_view %}?student={{ student.id }}{% endif %}">← All grades</a>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head"><h3>Assignments</h3><span class="badge">{{ grades|length }}</span></div>
+    {% if grades %}
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th>Assignment</th><th>Category</th><th>Due</th>
+                <th class="num">Score</th><th class="num">%</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for grade in grades %}
+            <tr>
+              <td>
+                <b>{{ grade.assignment.title }}</b>
+                {% if grade.comment %}<br><small class="muted">{{ grade.comment }}</small>{% endif %}
+              </td>
+              <td class="muted">{{ grade.assignment.category.name if grade.assignment.category else '—' }}</td>
+              <td class="muted">{{ grade.assignment.due_on|pretty_date if grade.assignment.due_on else '—' }}</td>
+              <td class="num">
+                {% if grade.points_earned is not none %}
+                  {{ '%g'|format(grade.points_earned) }} / {{ '%g'|format(grade.assignment.points_possible) }}
+                {% else %}
+                  <span class="muted">— / {{ '%g'|format(grade.assignment.points_possible) }}</span>
+                {% endif %}
+              </td>
+              <td class="num">
+                {% if grade.percent is not none %}
+                  <b style="color:{{ grade.percent|grade_color }}">{{ grade.percent }}%</b>
+                {% else %}<span class="muted">—</span>{% endif %}
+              </td>
+              <td>
+                <span class="badge badge-{{ {'graded':'ok','ungraded':'','missing':'bad','excused':'info','late':'warn'}[grade.status] or '' }}">
+                  {{ grade.status }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty"><strong>No assignments yet</strong>Nothing has been posted for this course.</div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="stat-label">Course grade</div>
+      <div class="grade-lg" style="color:{{ summary.percent|grade_color }}">
+        {{ summary.letter }}
+      </div>
+      <div class="muted" style="font-size:.9rem">
+        {{ summary.percent|pct if summary.percent is not none else 'Not graded yet' }}
+        {% if summary.possible %}
+          · {{ '%g'|format(summary.earned) }} of {{ '%g'|format(summary.possible) }} points
+        {% endif %}
+      </div>
+      {% if summary.percent is not none %}
+        <div class="meter" style="margin-top:10px">
+          <span style="width:{{ [summary.percent, 100]|min }}%;
+                       background:{{ summary.percent|grade_color }}"></span>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if summary.categories %}
+    <div class="card card-tint">
+      <h3>Weighted categories</h3>
+      <div class="stack" style="margin-top:10px">
+        {% for category in summary.categories %}
+        <div>
+          <div class="row-between" style="font-size:.86rem">
+            <span><b>{{ category.name }}</b>
+              <span class="muted">· {{ (category.weight * 100)|round|int }}% of grade</span></span>
+            <b style="color:{{ category.percent|grade_color }}">{{ category.percent }}%</b>
+          </div>
+          <div class="meter">
+            <span style="width:{{ [category.percent, 100]|min }}%;
+                         background:{{ category.percent|grade_color }}"></span>
+          </div>
+          <small class="muted">{{ category.count }} assignment{{ '' if category.count == 1 else 's' }}</small>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card card-tint">
+      <h3>How this is calculated</h3>
+      <p class="muted" style="font-size:.88rem; margin:0">
+        {% if course.grading_mode == 'weighted' %}
+          Each category is averaged on its own, then combined using the weights above.
+        {% else %}
+          All points earned divided by all points possible.
+        {% endif %}
+        Missing work counts as zero; excused work is left out entirely.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

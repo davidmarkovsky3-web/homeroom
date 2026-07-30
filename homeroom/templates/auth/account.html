@@ -1,0 +1,288 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'account' %}
+{% block title %}Account — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Account settings</h1>
+    <div class="sub">{{ current_user.role_label }} · <span class="mono">{{ current_user.email }}</span></div>
+  </div>
+</div>
+
+<div class="pill-nav" style="margin-bottom:18px">
+  <a href="{{ url_for('auth.account', section='profile') }}"
+     class="{{ 'active' if section == 'profile' }}">Profile</a>
+  <a href="{{ url_for('auth.account', section='notifications') }}"
+     class="{{ 'active' if section == 'notifications' }}">Notifications</a>
+  <a href="{{ url_for('auth.account', section='security') }}"
+     class="{{ 'active' if section == 'security' }}">Security</a>
+  <a href="{{ url_for('auth.account', section='connections') }}"
+     class="{{ 'active' if section == 'connections' }}">Connections</a>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="stack">
+
+    {% if section == 'profile' %}
+    <div class="card">
+      <div class="card-head"><h3>Profile</h3></div>
+      <form method="post">
+        <input type="hidden" name="action" value="profile">
+        <div class="grid grid-2" style="gap:0 16px">
+          <div class="field">
+            <label for="preferred_name">Preferred name</label>
+            <input id="preferred_name" name="preferred_name" type="text"
+                   value="{{ current_user.preferred_name or '' }}"
+                   placeholder="{{ current_user.first_name }}">
+            <div class="field-hint">Used instead of your legal first name across the app.</div>
+          </div>
+          <div class="field">
+            <label for="pronouns">Pronouns</label>
+            <input id="pronouns" name="pronouns" type="text"
+                   value="{{ current_user.pronouns or '' }}" placeholder="she/her">
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="gap:0 16px">
+          <div class="field">
+            <label for="phone">Phone</label>
+            <input id="phone" name="phone" type="tel" value="{{ current_user.phone or '' }}">
+          </div>
+          <div class="field">
+            <label for="birthdate">Date of birth</label>
+            <input id="birthdate" name="birthdate" type="date"
+                   value="{{ current_user.birthdate.isoformat() if current_user.birthdate else '' }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="address">Address</label>
+          <input id="address" name="address" type="text" value="{{ current_user.address or '' }}">
+        </div>
+
+        <fieldset>
+          <legend>Emergency contact</legend>
+          <div class="grid grid-3" style="gap:0 14px">
+            <div class="field">
+              <label for="emergency_contact_name">Name</label>
+              <input id="emergency_contact_name" name="emergency_contact_name" type="text"
+                     value="{{ current_user.emergency_contact_name or '' }}">
+            </div>
+            <div class="field">
+              <label for="emergency_contact_phone">Phone</label>
+              <input id="emergency_contact_phone" name="emergency_contact_phone" type="tel"
+                     value="{{ current_user.emergency_contact_phone or '' }}">
+            </div>
+            <div class="field">
+              <label for="emergency_contact_relation">Relationship</label>
+              <input id="emergency_contact_relation" name="emergency_contact_relation" type="text"
+                     value="{{ current_user.emergency_contact_relation or '' }}"
+                     placeholder="Parent">
+            </div>
+          </div>
+        </fieldset>
+
+        <button class="btn" type="submit">Save profile</button>
+      </form>
+    </div>
+
+    {% elif section == 'notifications' %}
+    <div class="card">
+      <div class="card-head"><h3>Notifications</h3></div>
+      <form method="post">
+        <input type="hidden" name="action" value="notifications">
+        <fieldset>
+          <legend>Email me about</legend>
+          <div class="check">
+            <input type="checkbox" id="notify_grades" name="notify_grades"
+                   {% if current_user.notify_grades %}checked{% endif %}>
+            <label for="notify_grades"><b>New grades</b><br>
+              <span class="muted" style="font-weight:400">When a score is posted or changed.</span></label>
+          </div>
+          <div class="check">
+            <input type="checkbox" id="notify_assignments" name="notify_assignments"
+                   {% if current_user.notify_assignments %}checked{% endif %}>
+            <label for="notify_assignments"><b>Assignments</b><br>
+              <span class="muted" style="font-weight:400">New work posted and upcoming due dates.</span></label>
+          </div>
+          <div class="check">
+            <input type="checkbox" id="notify_attendance" name="notify_attendance"
+                   {% if current_user.notify_attendance %}checked{% endif %}>
+            <label for="notify_attendance"><b>Attendance</b><br>
+              <span class="muted" style="font-weight:400">Absences and tardies as they're recorded.</span></label>
+          </div>
+          <div class="check">
+            <input type="checkbox" id="notify_announcements" name="notify_announcements"
+                   {% if current_user.notify_announcements %}checked{% endif %}>
+            <label for="notify_announcements"><b>School announcements</b><br>
+              <span class="muted" style="font-weight:400">Calendar events and school-wide notices.</span></label>
+          </div>
+        </fieldset>
+
+        <div class="field">
+          <label for="notify_digest">How often</label>
+          <select id="notify_digest" name="notify_digest">
+            {% for option in digest_choices %}
+              <option value="{{ option }}"
+                      {% if current_user.notify_digest == option %}selected{% endif %}>
+                {% if option == 'realtime' %}As it happens
+                {% elif option == 'daily' %}Daily summary
+                {% elif option == 'weekly' %}Weekly summary
+                {% else %}Don't email me{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button class="btn" type="submit">Save preferences</button>
+      </form>
+      <p class="field-hint" style="margin-top:14px">
+        This demo stores your preferences but doesn't send mail — there's no mail transport wired up.
+      </p>
+    </div>
+
+    {% elif section == 'security' %}
+    <div class="card">
+      <div class="card-head"><h3>Change password</h3></div>
+      <form method="post" style="max-width:420px">
+        <input type="hidden" name="action" value="password">
+        <div class="field">
+          <label for="current_password">Current password</label>
+          <input id="current_password" name="current_password" type="password" required
+                 autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label for="new_password">New password</label>
+          <input id="new_password" name="new_password" type="password" required
+                 autocomplete="new-password">
+          <div class="field-hint">At least 8 characters, and different from the current one.</div>
+        </div>
+        <div class="field">
+          <label for="confirm_password">Confirm new password</label>
+          <input id="confirm_password" name="confirm_password" type="password" required
+                 autocomplete="new-password">
+        </div>
+        <button class="btn" type="submit">Update password</button>
+      </form>
+      <hr class="divider">
+      <dl class="kv" style="grid-template-columns:150px 1fr">
+        <dt>Last sign-in</dt>
+        <dd>{% if current_user.last_login_at %}
+              {{ current_user.last_login_at.strftime('%b %d, %Y at %I:%M %p').replace(' 0', ' ') }}
+            {% else %}This is your first session{% endif %}</dd>
+        <dt>Account created</dt><dd>{{ current_user.created_at.date()|pretty_date }}</dd>
+      </dl>
+    </div>
+
+    {% else %}
+    <div class="card">
+      <div class="card-head"><h3>Connections</h3></div>
+
+      {% if children %}
+        <h4 style="font-size:.95rem">Students linked to this account</h4>
+        <div class="table-wrap" style="border:none; margin-bottom:18px">
+          <table>
+            <thead><tr><th>Student</th><th>Relationship</th><th>Grades</th>
+                       <th>Attendance</th><th>Documents</th></tr></thead>
+            <tbody>
+              {% for link in children %}
+              <tr>
+                <td><b>{{ link.student.full_name }}</b><br>
+                  <small class="muted">Grade {{ link.student.grade_level or '—' }}</small></td>
+                <td>{{ link.relationship_label }}
+                  {% if link.is_primary %}<span class="badge badge-brand">Primary</span>{% endif %}</td>
+                <td><span class="badge badge-{{ 'ok' if link.can_view_grades else 'bad' }}">
+                  {{ 'Yes' if link.can_view_grades else 'No' }}</span></td>
+                <td><span class="badge badge-{{ 'ok' if link.can_view_attendance else 'bad' }}">
+                  {{ 'Yes' if link.can_view_attendance else 'No' }}</span></td>
+                <td><span class="badge badge-{{ 'ok' if link.can_view_documents else 'bad' }}">
+                  {{ 'Yes' if link.can_view_documents else 'No' }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+
+      {% if guardians %}
+        <h4 style="font-size:.95rem">Guardians who can see your record</h4>
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead><tr><th>Guardian</th><th>Relationship</th><th>Email</th><th>Can see</th></tr></thead>
+            <tbody>
+              {% for link in guardians %}
+              <tr>
+                <td><b>{{ link.parent.full_name }}</b></td>
+                <td>{{ link.relationship_label }}</td>
+                <td class="mono muted">{{ link.parent.email }}</td>
+                <td>
+                  {% if link.can_view_grades %}<span class="badge">Grades</span>{% endif %}
+                  {% if link.can_view_attendance %}<span class="badge">Attendance</span>{% endif %}
+                  {% if link.can_view_documents %}<span class="badge">Documents</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+
+      {% if schools %}
+        <h4 style="font-size:.95rem; margin-top:18px">Schools you can access</h4>
+        <div class="stack">
+          {% for item in schools %}
+          <div class="row-between" style="font-size:.9rem">
+            <span><b>{{ item.name }}</b>
+              <span class="muted">· {{ item.district.name if item.district else '' }}</span></span>
+            <form method="post" action="{{ url_for('staff.switch_school') }}">
+              <input type="hidden" name="school_id" value="{{ item.id }}">
+              <button class="btn btn-sm btn-ghost" type="submit">
+                {{ 'Current' if school and school.id == item.id else 'Switch' }}</button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% if not children and not guardians and not schools %}
+        <div class="empty"><strong>No connections</strong>
+          This account isn't linked to other accounts or to multiple schools.</div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card card-tint">
+      <h3>Your details</h3>
+      <dl class="kv" style="grid-template-columns:110px 1fr">
+        <dt>Name</dt><dd>{{ current_user.full_name }}</dd>
+        {% if current_user.preferred_name %}
+          <dt>Goes by</dt><dd>{{ current_user.preferred_name }}</dd>{% endif %}
+        {% if current_user.pronouns %}
+          <dt>Pronouns</dt><dd>{{ current_user.pronouns }}</dd>{% endif %}
+        <dt>Email</dt><dd class="mono">{{ current_user.email }}</dd>
+        <dt>Role</dt><dd>{{ current_user.role_label }}</dd>
+        {% if current_user.school %}
+          <dt>School</dt><dd>{{ current_user.school.name }}</dd>{% endif %}
+        {% if current_user.district %}
+          <dt>District</dt><dd>{{ current_user.district.name }}</dd>{% endif %}
+        {% if current_user.is_student %}
+          <dt>Student ID</dt><dd class="mono">{{ current_user.student_number or '—' }}</dd>
+          <dt>Grade</dt><dd>{{ current_user.grade_level or '—' }}</dd>
+          {% if uses_homeroom %}
+            <dt>{{ homeroom_label }}</dt><dd>{{ current_user.homeroom or '—' }}</dd>
+          {% endif %}
+        {% elif current_user.department or current_user.title %}
+          <dt>Department</dt><dd>{{ current_user.department or '—' }}</dd>
+          <dt>Title</dt><dd>{{ current_user.title or '—' }}</dd>
+        {% endif %}
+      </dl>
+      <p class="field-hint" style="margin-top:14px">
+        Name, role and enrollment are managed by your school office.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'attendance' %}
+{% block title %}Take attendance — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Take attendance</h1>
+    <div class="sub">
+      {{ day.strftime('%A, %B %d, %Y').replace(' 0', ' ') }}
+      · <strong>{{ day_label if open_today else 'No school scheduled' }}</strong>
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm"
+       href="{{ url_for('attendance.take', course=course.id if course else None, date=prev_day.isoformat()) }}">←</a>
+    <a class="btn btn-ghost btn-sm"
+       href="{{ url_for('attendance.take', course=course.id if course else None) }}">Today</a>
+    <a class="btn btn-ghost btn-sm"
+       href="{{ url_for('attendance.take', course=course.id if course else None, date=next_day.isoformat()) }}">→</a>
+    {% if not current_user.is_student %}
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('attendance.overview', date=day.isoformat()) }}">Overview</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if my_courses %}
+<div class="card" style="margin-bottom:18px; padding:14px 18px">
+  <div class="row" style="gap:8px">
+    <b style="font-size:.85rem; color:var(--ink-3)">Section:</b>
+    {% for option in my_courses %}
+      <a class="btn btn-sm {{ 'btn-soft' if course and option.id == course.id else 'btn-ghost' }}"
+         href="{{ url_for('attendance.take', course=option.id, date=day.isoformat()) }}">
+        {{ option.period.label if option.period else '—' }} · {{ option.code }}
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if course %}
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h3 style="margin:0">{{ course.name }}</h3>
+        <div class="muted" style="font-size:.85rem">
+          <span class="mono">{{ course.code }}</span> ·
+          {{ course.period.label if course.period else 'Unscheduled' }}
+          {% if course.period %}({{ course.period.time_range }} typical){% endif %} ·
+          Rm {{ course.room or '—' }} · {{ course.days_label }}
+        </div>
+      </div>
+      <span class="badge badge-{{ 'ok' if already_taken else 'warn' }}">
+        {{ 'Submitted' if already_taken else 'Not taken' }}</span>
+    </div>
+
+    {% if open_today and not course.meets_on(day_type, weekday=day.weekday()) %}
+      <div class="flash flash-warning">
+        {{ course.code }} doesn't normally meet on {{ day_label }}. You can still record
+        attendance for a makeup or special session.
+      </div>
+    {% endif %}
+
+    {% if roster %}
+    <form method="post">
+      <input type="hidden" name="date" value="{{ day.isoformat() }}">
+      <input type="hidden" name="course_id" value="{{ course.id }}">
+
+      <div class="row" style="margin-bottom:14px; gap:8px">
+        <b style="font-size:.85rem; color:var(--ink-3)">Mark all:</b>
+        {% for status in statuses %}
+          <button class="btn btn-sm btn-ghost" type="button" data-bulk="{{ status }}"
+                  style="text-transform:capitalize">{{ status }}</button>
+        {% endfor %}
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Student</th><th class="hide-sm">ID</th><th>Status</th><th class="hide-sm">Note</th></tr>
+          </thead>
+          <tbody>
+            {% for entry in roster %}
+            <tr>
+              <td>
+                <b>{{ entry.student.display_name }}</b><br>
+                <small class="muted">Grade {{ entry.student.grade_level or '—' }}</small>
+              </td>
+              <td class="hide-sm mono muted">{{ entry.student.student_number or '—' }}</td>
+              <td>
+                <div class="att-buttons">
+                  {% for status in statuses %}
+                    <input type="radio" id="s{{ entry.student.id }}-{{ status }}"
+                           name="status_{{ entry.student.id }}" value="{{ status }}"
+                           data-student="{{ entry.student.id }}"
+                           {% if entry.status == status %}checked{% endif %}>
+                    <label for="s{{ entry.student.id }}-{{ status }}" class="s-{{ status }}"
+                           style="text-transform:capitalize">{{ status }}</label>
+                  {% endfor %}
+                </div>
+              </td>
+              <td class="hide-sm">
+                <input type="text" name="note_{{ entry.student.id }}" value="{{ entry.note }}"
+                       placeholder="Optional" style="min-width:160px">
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="row-between" style="margin-top:18px">
+        <span class="muted" style="font-size:.88rem">{{ roster|length }} students on this roster</span>
+        <button class="btn btn-lg" type="submit">Save attendance</button>
+      </div>
+    </form>
+    {% else %}
+      <div class="empty"><strong>No students enrolled</strong>
+        Nobody is on the roster for {{ course.code }} yet.</div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card card-tint">
+      <h3>Status meanings</h3>
+      <dl class="kv" style="grid-template-columns:80px 1fr; font-size:.88rem">
+        <dt><span class="badge badge-ok">Present</span></dt><dd>In class on time.</dd>
+        <dt><span class="badge badge-bad">Absent</span></dt><dd>Not in class, unexcused.</dd>
+        <dt><span class="badge badge-warn">Tardy</span></dt><dd>Arrived after the bell.</dd>
+        <dt><span class="badge badge-info">Excused</span></dt><dd>Absent with a note on file.</dd>
+      </dl>
+      <p class="field-hint" style="margin-top:12px">
+        Everyone defaults to present, so a normal day is just marking the exceptions and saving.
+      </p>
+    </div>
+
+    <div class="card card-tint">
+      <h3>Roster</h3>
+      <dl class="kv" style="grid-template-columns:110px 1fr">
+        <dt>Enrolled</dt><dd>{{ course.seats_taken }} / {{ course.capacity }}</dd>
+        <dt>Teacher</dt><dd>{{ course.teacher.full_name if course.teacher else '—' }}</dd>
+        <dt>Meets</dt><dd>{{ course.days_label }}</dd>
+      </dl>
+      <hr class="divider">
+      <a class="btn btn-ghost btn-block" href="{{ url_for('courses.detail', course_id=course.id) }}">
+        Course detail</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('[data-bulk]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var status = button.dataset.bulk;
+      document.querySelectorAll('input[type=radio][value="' + status + '"][data-student]')
+        .forEach(function (radio) { radio.checked = true; });
+    });
+  });
+</script>
+
+{% else %}
+<div class="card">
+  <div class="empty">
+    <strong>No section selected</strong>
+    {% if my_courses %}Pick a section above to take attendance.
+    {% else %}You have no sections meeting on this day.{% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

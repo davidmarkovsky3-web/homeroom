@@ -1,0 +1,221 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'admin' %}
+{% block title %}Courses — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Courses</h1>
+    <div class="sub">{{ school.name }} · {{ courses|length }} sections · {{ school.rotation_label }}</div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.index') }}">← Administration</a>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head"><h3>All sections</h3></div>
+    {% if courses %}
+    <div class="table-wrap" style="border:none">
+      <table>
+        <thead>
+          <tr><th>Course</th><th>Teacher</th><th>Period</th><th>Meets</th>
+              <th class="hide-sm">Room</th><th class="num">Seats</th><th class="tight"></th></tr>
+        </thead>
+        <tbody>
+          {% for course in courses %}
+          <tr>
+            <td>
+              <a href="{{ url_for('courses.detail', course_id=course.id) }}">
+                <b>{{ course.name }}</b></a><br>
+              <small class="muted mono">{{ course.code }} · {{ course.department }}</small>
+              {% if not course.selectable %}<span class="badge badge-warn">Not selectable</span>{% endif %}
+              {% if not course.period %}<span class="badge badge-bad">Unscheduled</span>{% endif %}
+            </td>
+            <td>{{ course.teacher.last_name if course.teacher else '—' }}</td>
+            <td>{{ course.period.label if course.period else '—' }}</td>
+            <td><span class="badge">{{ course.days_label }}</span></td>
+            <td class="hide-sm">{{ course.room or '—' }}</td>
+            <td class="num" style="min-width:110px">
+              {{ course.seats_taken }}/{{ course.capacity }}
+              <div class="meter {{ 'meter-bad' if course.fill_percent >= 100 else ('meter-warn' if course.fill_percent >= 85 else 'meter-ok') }}">
+                <span style="width:{{ course.fill_percent }}%"></span>
+              </div>
+            </td>
+            <td class="tight">
+              <div class="row" style="gap:5px; flex-wrap:nowrap">
+                <a class="btn btn-sm btn-ghost"
+                   href="{{ url_for('admin.course_roster', course_id=course.id) }}">Roster</a>
+                <details>
+                  <summary class="btn btn-sm btn-ghost" style="list-style:none">Edit</summary>
+                  <form method="post" action="{{ url_for('admin.edit_course', course_id=course.id) }}"
+                        class="card card-tint" style="margin-top:8px; min-width:270px; text-align:left">
+                    <div class="field">
+                      <label>Name</label>
+                      <input name="name" type="text" value="{{ course.name }}">
+                    </div>
+                    <div class="field">
+                      <label>Department</label>
+                      <input name="department" type="text" value="{{ course.department }}">
+                    </div>
+                    <div class="field">
+                      <label>Teacher</label>
+                      <select name="teacher_id">
+                        <option value="">Unassigned</option>
+                        {% for teacher in teachers %}
+                          <option value="{{ teacher.id }}"
+                                  {% if course.teacher_id == teacher.id %}selected{% endif %}>
+                            {{ teacher.display_name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>Period</label>
+                      <select name="period_id">
+                        <option value="">Unscheduled</option>
+                        {% for period in periods %}
+                          <option value="{{ period.id }}"
+                                  {% if course.period_id == period.id %}selected{% endif %}>
+                            {{ period.label }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    {% if school.rotation_tokens %}
+                    <div class="field">
+                      <label>Meets on</label>
+                      {% for token in school.rotation_tokens %}
+                        <div class="check">
+                          <input type="checkbox" id="md-{{ course.id }}-{{ token }}"
+                                 name="meeting_days" value="{{ token }}"
+                                 {% if token in course.day_tokens %}checked{% endif %}>
+                          <label for="md-{{ course.id }}-{{ token }}">{{ school.token_label(token) }}</label>
+                        </div>
+                      {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="field">
+                      <label>Room</label>
+                      <input name="room" type="text" value="{{ course.room or '' }}">
+                    </div>
+                    <div class="field">
+                      <label>Capacity</label>
+                      <input name="capacity" type="number" min="1" value="{{ course.capacity }}">
+                    </div>
+                    <div class="check">
+                      <input type="checkbox" id="sel-{{ course.id }}" name="selectable"
+                             {% if course.selectable %}checked{% endif %}>
+                      <label for="sel-{{ course.id }}">Students may request this</label>
+                    </div>
+                    <button class="btn btn-sm btn-block" type="submit">Save</button>
+                  </form>
+                </details>
+                <form method="post" action="{{ url_for('admin.delete_course', course_id=course.id) }}"
+                      onsubmit="return confirm('Delete {{ course.code }}?{% if course.seats_taken %} This unenrolls {{ course.seats_taken }} student(s) and deletes its assignments, grades and attendance.{% endif %}');">
+                  <button class="btn btn-sm btn-ghost" type="submit">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty"><strong>No courses yet</strong>Create the first section.</div>
+    {% endif %}
+  </div>
+
+  <div class="card card-tint">
+    <h3>New section</h3>
+    <form method="post">
+      <div class="field">
+        <label for="code">Course code *</label>
+        <input id="code" name="code" type="text" required placeholder="MTH210">
+      </div>
+      <div class="field">
+        <label for="name">Course name *</label>
+        <input id="name" name="name" type="text" required placeholder="Algebra II">
+      </div>
+      <div class="field">
+        <label for="department">Department</label>
+        <input id="department" name="department" type="text" placeholder="Mathematics">
+      </div>
+      <div class="field">
+        <label for="teacher_id">Teacher</label>
+        <select id="teacher_id" name="teacher_id">
+          <option value="">Unassigned</option>
+          {% for teacher in teachers %}
+            <option value="{{ teacher.id }}">{{ teacher.display_name }}
+              {% if teacher.department %}({{ teacher.department }}){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="period_id">Period</label>
+        <select id="period_id" name="period_id">
+          <option value="">Unscheduled</option>
+          {% for period in periods %}
+            <option value="{{ period.id }}">{{ period.label }} ({{ period.time_range }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if school.rotation_tokens %}
+      <div class="field">
+        <label>Meets on</label>
+        <div class="field-hint" style="margin-top:0; margin-bottom:6px">
+          {{ school.rotation_label }} — leave all unchecked to meet every day.
+        </div>
+        {% for token in school.rotation_tokens %}
+          <div class="check">
+            <input type="checkbox" id="new-md-{{ token }}" name="meeting_days" value="{{ token }}" checked>
+            <label for="new-md-{{ token }}">{{ school.token_label(token) }}</label>
+          </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="field-hint" style="margin-bottom:16px">
+        This school meets the same every day, so there's nothing to choose here.
+      </div>
+      {% endif %}
+
+      <div class="grid grid-2" style="gap:0 12px">
+        <div class="field">
+          <label for="capacity">Capacity</label>
+          <input id="capacity" name="capacity" type="number" min="1" value="30">
+        </div>
+        <div class="field">
+          <label for="credits">Credits</label>
+          <input id="credits" name="credits" type="number" min="0" step="0.5" value="1.0">
+        </div>
+      </div>
+      <div class="field">
+        <label for="room">Room</label>
+        <input id="room" name="room" type="text" placeholder="212">
+      </div>
+      <div class="field">
+        <label for="term_id">Term</label>
+        <select id="term_id" name="term_id">
+          <option value="">—</option>
+          {% for term in terms %}
+            <option value="{{ term.id }}" {% if term.is_current %}selected{% endif %}>
+              {{ term.name }} · {{ term.school_year }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="prerequisite">Prerequisite</label>
+        <input id="prerequisite" name="prerequisite" type="text" placeholder="Algebra I">
+      </div>
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" name="description" style="min-height:70px"></textarea>
+      </div>
+      <div class="check">
+        <input type="checkbox" id="selectable" name="selectable" checked>
+        <label for="selectable">Students may request this course</label>
+      </div>
+      <button class="btn btn-block" type="submit">Create section</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

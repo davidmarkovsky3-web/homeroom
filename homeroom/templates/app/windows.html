@@ -1,0 +1,102 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'selection' %}
+{% block title %}Selection windows — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Selection windows</h1>
+    <div class="sub">When students can submit ranked course requests</div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('courses.review_requests') }}">← Review requests</a>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head"><h3>All windows</h3></div>
+    {% if windows %}
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th>Window</th><th class="hide-sm">Dates</th><th class="center">Choices</th>
+                <th>Submitted</th><th>Status</th><th class="tight"></th></tr>
+          </thead>
+          <tbody>
+            {% for window in windows %}
+            {% set stat = stats[window.id] %}
+            <tr>
+              <td><b>{{ window.name }}</b></td>
+              <td class="hide-sm muted">{{ window.opens_on|pretty_date }} – {{ window.closes_on|pretty_date }}</td>
+              <td class="center">{{ window.required_slots }}</td>
+              <td style="min-width:130px">
+                {{ stat.submitted }} / {{ stat.total }}
+                <div class="meter">
+                  <span style="width:{{ (stat.submitted / stat.total * 100)|round if stat.total else 0 }}%"></span>
+                </div>
+              </td>
+              <td>
+                {% if window.accepting %}
+                  <span class="badge badge-ok">Open</span>
+                {% elif not window.is_open %}
+                  <span class="badge badge-warn">Paused</span>
+                {% else %}
+                  <span class="badge">Out of range</span>
+                {% endif %}
+              </td>
+              <td class="tight">
+                {% if current_user.is_admin %}
+                <form method="post" action="{{ url_for('courses.toggle_window', window_id=window.id) }}">
+                  <button class="btn btn-sm btn-ghost" type="submit">
+                    {{ 'Pause' if window.is_open else 'Resume' }}</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty"><strong>No windows yet</strong>Create one to open course selection.</div>
+    {% endif %}
+  </div>
+
+  {% if current_user.is_admin %}
+  <div class="card card-tint">
+    <h3>New window</h3>
+    <form method="post">
+      <div class="field">
+        <label for="name">Name</label>
+        <input id="name" name="name" type="text" required
+               placeholder="2027–2028 Course Selection">
+      </div>
+      <div class="field">
+        <label for="opens_on">Opens</label>
+        <input id="opens_on" name="opens_on" type="date" required>
+      </div>
+      <div class="field">
+        <label for="closes_on">Closes</label>
+        <input id="closes_on" name="closes_on" type="date" required>
+      </div>
+      <div class="field">
+        <label for="required_slots">Required choices</label>
+        <input id="required_slots" name="required_slots" type="number" min="1" max="12" value="6">
+        <div class="field-hint">Each choice gets a 1st pick and an optional 2nd pick.</div>
+      </div>
+      <div class="field">
+        <label for="instructions">Instructions for students</label>
+        <textarea id="instructions" name="instructions"
+                  placeholder="Explain graduation requirements, deadlines, who to ask for help…"></textarea>
+      </div>
+      <button class="btn btn-block" type="submit">Create window</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="card card-tint">
+    <h3>Windows</h3>
+    <p class="muted" style="font-size:.9rem">Only administrators can create or pause selection
+       windows. You can review and approve requests from the Course Requests tab.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

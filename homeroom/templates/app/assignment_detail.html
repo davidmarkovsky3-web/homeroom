@@ -1,0 +1,138 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'assignments' %}
+{% block title %}{{ assignment.title }} — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ assignment.title }}</h1>
+    <div class="sub">
+      {{ course.name }} · <span class="mono">{{ course.code }}</span> ·
+      {{ '%g'|format(assignment.points_possible) }} points
+      {% if assignment.due_on %} · due {{ assignment.due_on|pretty_date }}{% endif %}
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('grades.gradebook', course=course.id) }}">Gradebook</a>
+    <form method="post" action="{{ url_for('assignments.delete_assignment', assignment_id=assignment.id) }}"
+          onsubmit="return confirm('Delete “{{ assignment.title }}” and all its grades?');">
+      <button class="btn btn-sm btn-danger" type="submit">Delete</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head">
+      <h3>Scores</h3>
+      <span class="badge">{{ assignment.graded_count }} of {{ grades|length }} graded</span>
+    </div>
+    {% if grades %}
+    <form method="post" action="{{ url_for('assignments.save_grades', assignment_id=assignment.id) }}">
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th>Student</th><th class="num">Points</th><th>Status</th><th>Comment</th></tr>
+          </thead>
+          <tbody>
+            {% for grade in grades %}
+            <tr>
+              <td><b>{{ grade.student.display_name }}</b><br>
+                <small class="muted">Grade {{ grade.student.grade_level or '—' }}</small></td>
+              <td class="num" style="width:150px">
+                <input type="text" inputmode="decimal" name="points_{{ grade.student_id }}"
+                       value="{{ '%g'|format(grade.points_earned) if grade.points_earned is not none else '' }}"
+                       placeholder="—" style="width:80px; text-align:right">
+                <span class="muted">/ {{ '%g'|format(assignment.points_possible) }}</span>
+              </td>
+              <td style="width:170px">
+                <select name="status_{{ grade.student_id }}">
+                  {% for option in ['graded', 'ungraded', 'missing', 'excused', 'late'] %}
+                    <option value="{{ option }}" {% if grade.status == option %}selected{% endif %}
+                            style="text-transform:capitalize">{{ option|capitalize }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td>
+                <input type="text" name="comment_{{ grade.student_id }}"
+                       value="{{ grade.comment or '' }}" placeholder="Optional feedback">
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="row-between" style="margin-top:16px">
+        <span class="muted" style="font-size:.88rem">
+          Leaving points blank marks the row ungraded.</span>
+        <button class="btn" type="submit">Save scores</button>
+      </div>
+    </form>
+    {% else %}
+      <div class="empty"><strong>No students</strong>Nobody is enrolled in this section.</div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="stat-label">Class average</div>
+      <div class="grade-lg" style="color:{{ assignment.average_percent|grade_color }}">
+        {{ assignment.average_percent|pct if assignment.average_percent is not none else '—' }}
+      </div>
+      {% if assignment.average_percent is not none %}
+        <div class="meter" style="margin-top:8px">
+          <span style="width:{{ [assignment.average_percent, 100]|min }}%;
+                       background:{{ assignment.average_percent|grade_color }}"></span>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="card card-tint">
+      <h3>Edit details</h3>
+      <form method="post" action="{{ url_for('assignments.edit_assignment', assignment_id=assignment.id) }}">
+        <div class="field">
+          <label for="title">Title</label>
+          <input id="title" name="title" type="text" value="{{ assignment.title }}">
+        </div>
+        <div class="field">
+          <label for="description">Description</label>
+          <textarea id="description" name="description"
+                    style="min-height:70px">{{ assignment.description or '' }}</textarea>
+        </div>
+        <div class="field">
+          <label for="points_possible">Points possible</label>
+          <input id="points_possible" name="points_possible" type="number" min="0" step="0.5"
+                 value="{{ '%g'|format(assignment.points_possible) }}">
+        </div>
+        <div class="field">
+          <label for="due_on">Due date</label>
+          <input id="due_on" name="due_on" type="date"
+                 value="{{ assignment.due_on.isoformat() if assignment.due_on else '' }}">
+        </div>
+        <div class="field">
+          <label for="category_id">Category</label>
+          <select id="category_id" name="category_id">
+            <option value="">No category</option>
+            {% for category in course.categories %}
+              <option value="{{ category.id }}"
+                      {% if assignment.category_id == category.id %}selected{% endif %}>
+                {{ category.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="check">
+          <input type="checkbox" id="published" name="published"
+                 {% if assignment.published %}checked{% endif %}>
+          <label for="published">Visible to students</label>
+        </div>
+        <div class="check">
+          <input type="checkbox" id="graded" name="graded"
+                 {% if assignment.graded %}checked{% endif %}>
+          <label for="graded">Counts toward the grade</label>
+        </div>
+        <button class="btn btn-block btn-sm" type="submit">Save changes</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'attendance' %}
+{% block title %}Attendance overview — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Attendance overview</h1>
+    <div class="sub">
+      {{ day.strftime('%A, %B %d, %Y').replace(' 0', ' ') }}
+      · <strong>{{ day_label if open_today else 'No school scheduled' }}</strong>
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('attendance.overview', date=prev_day.isoformat()) }}">←</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('attendance.overview') }}">Today</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('attendance.overview', date=next_day.isoformat()) }}">→</a>
+    <a class="btn btn-sm" href="{{ url_for('attendance.take', date=day.isoformat()) }}">Take attendance</a>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:18px">
+  <div class="stat">
+    <div class="stat-label">Daily rate</div>
+    <div class="stat-value">{% if rate is not none %}{{ rate }}%{% else %}—{% endif %}</div>
+    {% if rate is not none %}
+      <div class="meter {{ 'meter-ok' if rate >= 94 else ('meter-warn' if rate >= 90 else 'meter-bad') }}">
+        <span style="width:{{ rate }}%"></span>
+      </div>
+    {% else %}
+      <div class="stat-note">Nothing submitted</div>
+    {% endif %}
+  </div>
+  <div class="stat">
+    <div class="stat-label">Absent</div>
+    <div class="stat-value" style="color:var(--bad)">{{ counts.absent }}</div>
+    <div class="stat-note">{{ counts.excused }} excused</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Tardy</div>
+    <div class="stat-value" style="color:var(--warn)">{{ counts.tardy }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Records submitted</div>
+    <div class="stat-value">{{ '{:,}'.format(total) }}</div>
+    <div class="stat-note">{{ missing|length }} sections outstanding</div>
+  </div>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head">
+        <h3>Absent and tardy today</h3>
+        <span class="badge">{{ absent_today|length }}</span>
+      </div>
+      {% if absent_today %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead>
+              <tr><th>Student</th><th class="hide-sm">Grade</th><th>Course</th>
+                  <th class="hide-sm">Period</th><th>Status</th><th class="hide-sm">Note</th></tr>
+            </thead>
+            <tbody>
+              {% for record in absent_today %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('attendance.student_detail', student_id=record.student.id) }}">
+                    <b>{{ record.student.display_name }}</b></a><br>
+                  <small class="muted mono">{{ record.student.student_number or '—' }}</small>
+                </td>
+                <td class="hide-sm">{{ record.student.grade_level or '—' }}</td>
+                <td>{{ record.course.code }}<br><small class="muted">{{ record.course.name }}</small></td>
+                <td class="hide-sm">{{ record.course.period.label if record.course.period else '—' }}</td>
+                <td>
+                  <span class="badge badge-{{ 'bad' if record.status == 'absent' else 'warn' }}">
+                    {{ record.status }}</span>
+                </td>
+                <td class="hide-sm muted">{{ record.note or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty"><strong>Nobody marked absent or tardy</strong>
+          {% if total %}Perfect attendance so far today.{% else %}No attendance has been submitted yet.{% endif %}</div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Sections that haven't submitted</h3>
+        <span class="badge {{ 'badge-warn' if missing else 'badge-ok' }}">{{ missing|length }}</span>
+      </div>
+      {% if missing %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead><tr><th>Section</th><th>Period</th><th>Teacher</th><th class="center">Students</th><th class="tight"></th></tr></thead>
+            <tbody>
+              {% for course in missing %}
+              <tr>
+                <td><b>{{ course.name }}</b><br><small class="muted mono">{{ course.code }}</small></td>
+                <td>{{ course.period.label if course.period else '—' }}</td>
+                <td>{{ course.teacher.full_name if course.teacher else '—' }}</td>
+                <td class="center">{{ course.seats_taken }}</td>
+                <td class="tight">
+                  <a class="btn btn-sm btn-ghost"
+                     href="{{ url_for('attendance.take', course=course.id, date=day.isoformat()) }}">Enter</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty"><strong>All caught up</strong>
+          Every section meeting today has submitted attendance.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head">
+        <h3>Most absences</h3>
+        {% if term %}<span class="badge">{{ term.name }}</span>{% endif %}
+      </div>
+      {% if chronic %}
+        <div class="stack">
+          {% for student, count in chronic %}
+          <div class="row-between" style="gap:8px; font-size:.9rem">
+            <div style="min-width:0">
+              <a href="{{ url_for('attendance.student_detail', student_id=student.id) }}">
+                <b>{{ student.display_name }}</b></a>
+              <div class="muted" style="font-size:.79rem">Grade {{ student.grade_level or '—' }}
+                {% if uses_homeroom %} · {{ student.homeroom or 'no ' ~ homeroom_label|lower }}{% endif %}</div>
+            </div>
+            <span class="badge {{ 'badge-bad' if count >= 10 else 'badge-warn' }}">{{ count }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">No absences recorded this term.</div>
+      {% endif %}
+    </div>
+
+    <div class="card card-tint">
+      <h3>Reading this page</h3>
+      <p class="muted" style="font-size:.88rem; margin:0">
+        The daily rate counts present and excused records against every record submitted for this
+        date. Sections only appear as outstanding if they meet on today's rotation
+        {% if day_type %}({{ day_type }} Day){% endif %} and have students enrolled.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

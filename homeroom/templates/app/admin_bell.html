@@ -1,0 +1,426 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'admin' %}
+{% block title %}Bell schedule — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Bell schedule &amp; timetable</h1>
+    <div class="sub">{{ school.name }} · {{ school.rotation_label }} ·
+      {{ layouts|length }} day layout{{ '' if layouts|length == 1 else 's' }}</div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.index') }}">← Administration</a>
+</div>
+
+<div class="card card-tint" style="margin-bottom:18px">
+  <div class="row" style="gap:12px; align-items:flex-start">
+    <div style="font-size:1.3rem">🔔</div>
+    <div>
+      <b>How this fits together</b>
+      <p class="muted" style="margin:4px 0 0; font-size:.9rem">
+        <b>Slots</b> are the named things a course can occupy — P1, Lunch, {{ school.support_label }}.
+        A <b>day layout</b> says which slots run on a given day and at what times. Monday and
+        Tuesday can share one layout while Wednesday runs a shorter one; a course in P1 simply
+        doesn't meet on a day whose layout has no P1.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="align-items:start">
+  <div class="stack">
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Day layouts</h3>
+        <span class="badge">{{ layouts|length }}</span>
+      </div>
+      {% if layouts %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead>
+              <tr><th>Layout</th><th>Runs on</th><th class="num">Slots</th>
+                  <th>Day span</th><th class="tight"></th></tr>
+            </thead>
+            <tbody>
+              {% for layout in layouts %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('admin.edit_layout', layout_id=layout.id) }}">
+                    <b>{{ layout.name }}</b></a>
+                  {% if layout.is_default %}<span class="badge badge-brand">Default</span>{% endif %}
+                  {% if layout.description %}
+                    <br><small class="muted">{{ layout.description }}</small>{% endif %}
+                </td>
+                <td>
+                  {% if layout.weekday_tokens %}
+                    <span class="badge badge-accent">{{ layout.weekdays_label }}</span>
+                  {% else %}
+                    <span class="muted">{{ 'fallback' if layout.is_default else 'not assigned' }}</span>
+                  {% endif %}
+                </td>
+                <td class="num">{{ layout.entries|length }}
+                  <br><small class="muted">{{ layout.instructional_count }} class</small></td>
+                <td class="mono muted">{{ layout.day_span }}</td>
+                <td class="tight">
+                  <div class="row" style="gap:5px; flex-wrap:nowrap">
+                    <a class="btn btn-sm btn-ghost"
+                       href="{{ url_for('admin.edit_layout', layout_id=layout.id) }}">Edit</a>
+                    <form method="post" action="{{ url_for('admin.duplicate_layout', layout_id=layout.id) }}">
+                      <button class="btn btn-sm btn-ghost" type="submit">Copy</button>
+                    </form>
+                    <form method="post" action="{{ url_for('admin.delete_layout', layout_id=layout.id) }}"
+                          onsubmit="return confirm('Delete the “{{ layout.name }}” layout?');">
+                      <button class="btn btn-sm btn-ghost" type="submit">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% set claimed = [] %}
+        {% for layout in layouts %}{% for t in layout.weekday_tokens %}
+          {% if claimed.append(t) %}{% endif %}
+        {% endfor %}{% endfor %}
+        {% set unclaimed = weekday_order | reject('in', claimed) | list %}
+        {% if unclaimed and not layouts | selectattr('is_default') | list %}
+          <div class="flash flash-warning" style="margin-top:14px">
+            No layout covers {{ unclaimed | map('replace', 'M', 'Mon') | join(', ') }}
+            and there's no default. Those days fall back to the flat slot list below.
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="empty"><strong>No day layouts yet</strong>
+          Without one, every slot below runs every day at its default time.</div>
+      {% endif %}
+
+      <hr class="divider">
+      <h4 style="font-size:.95rem">New layout</h4>
+      <form method="post" action="{{ url_for('admin.create_layout') }}">
+        <div class="grid grid-2" style="gap:0 14px">
+          <div class="field">
+            <label for="name">Name</label>
+            <input id="name" name="name" type="text" required placeholder="Wednesday">
+          </div>
+          <div class="field">
+            <label for="description">Description</label>
+            <input id="description" name="description" type="text"
+                   placeholder="Late start, shortened periods">
+          </div>
+        </div>
+        <div class="field">
+          <label>Runs on these weekdays</label>
+          <div class="row" style="gap:14px">
+            {% for token in weekday_order %}
+              <div class="check" style="margin:0">
+                <input type="checkbox" id="nw-{{ token }}" name="default_weekdays" value="{{ token }}">
+                <label for="nw-{{ token }}">{{ weekday_names[token][:3] }}</label>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="check">
+          <input type="checkbox" id="seed_all" name="seed_all" checked>
+          <label for="seed_all">Start with every slot at its default time
+            <span class="muted" style="font-weight:400">— then remove what doesn't run</span></label>
+        </div>
+        <div class="check">
+          <input type="checkbox" id="is_default" name="is_default">
+          <label for="is_default">Use for any day no other layout claims</label>
+        </div>
+        <button class="btn btn-sm" type="submit">Create layout</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Slots</h3>
+        <span class="badge">{{ periods|length }}</span>
+      </div>
+      <p class="muted" style="font-size:.88rem; margin-top:-4px">
+        The named things a course can be scheduled into. Times here are defaults used when
+        building a layout — the layout is what actually decides when a slot runs.
+      </p>
+      {% if periods %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead><tr><th class="num">#</th><th>Slot</th><th>Default time</th><th>Kind</th>
+                       <th class="num">Sections</th><th class="tight"></th><th class="tight"></th></tr></thead>
+            <tbody>
+              {% for period in periods %}
+              <tr>
+                <td class="num muted">{{ period.ordinal }}</td>
+                <td><b>{{ period.label }}</b>
+                  {% if period.is_support and period.name != school.support_label %}
+                    <br><small class="muted">slot named “{{ period.name }}”</small>{% endif %}</td>
+                <td class="mono muted">{{ period.time_range }}</td>
+                <td>
+                  <span class="badge {{ 'badge-accent' if period.is_support else ('badge-info' if not period.is_instructional else '') }}">
+                    {{ period_kinds[period.kind] }}</span>
+                </td>
+                <td class="num">{{ period.courses|length }}</td>
+                <td class="tight">
+                  <details>
+                    <summary class="btn btn-sm btn-ghost" style="list-style:none">Edit</summary>
+                    <form method="post" action="{{ url_for('admin.edit_period', period_id=period.id) }}"
+                          class="card card-tint" style="margin-top:8px; min-width:250px; text-align:left">
+                      <div class="field">
+                        <label>Name</label>
+                        <input name="name" type="text" value="{{ period.name }}">
+                      </div>
+                      <div class="field">
+                        <label>Order</label>
+                        <input name="ordinal" type="number" min="1" value="{{ period.ordinal }}">
+                      </div>
+                      <div class="grid grid-2" style="gap:0 10px">
+                        <div class="field">
+                          <label>Default start</label>
+                          <input name="start_time" type="time"
+                                 value="{{ period.start_time.strftime('%H:%M') }}">
+                        </div>
+                        <div class="field">
+                          <label>Default end</label>
+                          <input name="end_time" type="time"
+                                 value="{{ period.end_time.strftime('%H:%M') }}">
+                        </div>
+                      </div>
+                      <div class="field">
+                        <label>Kind</label>
+                        <select name="kind">
+                          {% for key, label in period_kinds.items() %}
+                            <option value="{{ key }}" {% if period.kind == key %}selected{% endif %}>
+                              {{ label }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <button class="btn btn-sm btn-block" type="submit">Save</button>
+                    </form>
+                  </details>
+                </td>
+                <td class="tight">
+                  <form method="post" action="{{ url_for('admin.delete_period', period_id=period.id) }}"
+                        onsubmit="return confirm('Delete {{ period.name }}?{% if period.courses %} {{ period.courses|length }} section(s) become unscheduled.{% endif %}');">
+                    <button class="btn btn-sm btn-ghost" type="submit">Delete</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty"><strong>No slots yet</strong>Add some before creating sections.</div>
+      {% endif %}
+
+      <hr class="divider">
+      <h4 style="font-size:.95rem">Add a slot</h4>
+      <form method="post" class="row" style="gap:10px; align-items:flex-end">
+        <div class="field" style="margin:0; flex:2; min-width:110px">
+          <label for="slot_name">Name</label>
+          <input id="slot_name" name="name" type="text" required placeholder="P7">
+        </div>
+        <div class="field" style="margin:0; width:74px">
+          <label for="ordinal">Order</label>
+          <input id="ordinal" name="ordinal" type="number" min="1" value="{{ periods|length + 1 }}">
+        </div>
+        <div class="field" style="margin:0; width:112px">
+          <label for="start_time">Start</label>
+          <input id="start_time" name="start_time" type="time" required>
+        </div>
+        <div class="field" style="margin:0; width:112px">
+          <label for="end_time">End</label>
+          <input id="end_time" name="end_time" type="time" required>
+        </div>
+        <div class="field" style="margin:0; width:150px">
+          <label for="kind">Kind</label>
+          <select id="kind" name="kind">
+            {% for key, label in period_kinds.items() %}
+              <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn btn-sm" type="submit">Add</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h3>Names &amp; terminology</h3></div>
+      <p class="muted" style="font-size:.9rem; margin-top:-4px">
+        Schools use different words, and some of these concepts they don't use at all.
+        Whatever you set here is what students, teachers and parents see everywhere.
+      </p>
+      <form method="post" action="{{ url_for('admin.set_terminology') }}">
+        <div class="field">
+          <label for="support_label">The flex block is called</label>
+          <input id="support_label" name="support_label" type="text"
+                 value="{{ school.support_label }}" maxlength="40"
+                 style="max-width:260px">
+          <div class="field-hint">Support, Advisory, FLEX, Seminar, Study Hall…</div>
+        </div>
+
+        <hr class="divider">
+
+        <div class="check">
+          <input type="checkbox" id="uses_homeroom" name="uses_homeroom"
+                 {% if school.uses_homeroom %}checked{% endif %}>
+          <label for="uses_homeroom"><b>This school has homerooms</b><br>
+            <span class="muted" style="font-weight:400">Turn off and the field disappears
+              from profiles, rosters, demographics and imports — rather than sitting there
+              empty on every student.</span></label>
+        </div>
+        <div class="field" id="homeroom-name">
+          <label for="homeroom_label">Homerooms are called</label>
+          <input id="homeroom_label" name="homeroom_label" type="text"
+                 value="{{ school.homeroom_label }}" maxlength="40"
+                 style="max-width:260px">
+          <div class="field-hint">Homeroom, Advisory, Form Group, Tutor Group, Registration…</div>
+        </div>
+
+        <button class="btn btn-sm" type="submit">Save terminology</button>
+      </form>
+    </div>
+
+    <script>
+      (function () {
+        var toggle = document.getElementById('uses_homeroom');
+        var field = document.getElementById('homeroom-name');
+        function sync() { field.style.display = toggle.checked ? '' : 'none'; }
+        toggle.addEventListener('change', sync);
+        sync();
+      })();
+    </script>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Timetable model</h3>
+        <span class="badge badge-brand">{{ school.rotation_label }}</span>
+      </div>
+      <p class="muted" style="font-size:.9rem; margin-top:-4px">
+        Day layouts decide <em>which slots run</em>. This decides whether days also carry a
+        rotation type (A/B or a numbered cycle) that sections filter on.
+      </p>
+      <form method="post" action="{{ url_for('admin.set_rotation') }}">
+        {% for key, mode in rotation_modes.items() %}
+        <div class="check">
+          <input type="radio" id="rot-{{ key }}" name="rotation_mode" value="{{ key }}"
+                 {% if school.rotation_mode == key %}checked{% endif %}>
+          <label for="rot-{{ key }}"><b>{{ mode.label }}</b><br>
+            <span class="muted" style="font-weight:400">{{ mode.hint }}</span></label>
+        </div>
+        {% endfor %}
+        <div class="field">
+          <label for="cycle_length">Cycle length (numbered cycles only)</label>
+          <input id="cycle_length" name="cycle_length" type="number" min="2" max="20"
+                 value="{{ school.cycle_length }}" style="max-width:130px">
+        </div>
+        <button class="btn btn-sm" type="submit">Save model</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Generate the calendar</h3></div>
+      <form method="post" action="{{ url_for('admin.generate_days') }}">
+        <div class="grid grid-2" style="gap:0 12px">
+          <div class="field">
+            <label for="start">From</label>
+            <input id="start" name="start" type="date" required value="{{ today.isoformat() }}">
+          </div>
+          <div class="field">
+            <label for="end">To</label>
+            <input id="end" name="end" type="date" required>
+          </div>
+        </div>
+        <button class="btn btn-block" type="submit">Generate school days</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Set a single date</h3></div>
+      <form method="post" action="{{ url_for('admin.set_school_day') }}">
+        <div class="grid grid-2" style="gap:0 12px">
+          <div class="field">
+            <label for="day_date">Date</label>
+            <input id="day_date" name="day_date" type="date" required value="{{ today.isoformat() }}">
+          </div>
+          <div class="field">
+            <label for="day_type">Day type</label>
+            <select id="day_type" name="day_type">
+              {% for token in tokens %}
+                <option value="{{ token }}">{{ school.token_label(token) }}</option>
+              {% else %}
+                <option value="A">School day</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="bell_schedule_id">Use this layout instead of the weekday default</label>
+          <select id="bell_schedule_id" name="bell_schedule_id">
+            <option value="">Weekday default</option>
+            {% for layout in layouts %}
+              <option value="{{ layout.id }}">{{ layout.name }}</option>
+            {% endfor %}
+          </select>
+          <div class="field-hint">For one-off assembly or exam schedules.</div>
+        </div>
+        <div class="check">
+          <input type="checkbox" id="in_session" name="in_session" checked>
+          <label for="in_session">School is in session</label>
+        </div>
+        <div class="field">
+          <label for="note">Note</label>
+          <input id="note" name="note" type="text" placeholder="Early release, in-service…">
+        </div>
+        <button class="btn btn-block" type="submit">Save date</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Upcoming dates</h3>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('calendar.index') }}">Calendar</a>
+      </div>
+      {% if school_days %}
+        <div class="table-wrap" style="border:none; max-height:360px; overflow-y:auto">
+          <table>
+            <thead><tr><th>Date</th><th>Type</th><th>Layout</th></tr></thead>
+            <tbody>
+              {% for day in school_days %}
+              <tr class="{{ 'muted' if day.day_date < today }}">
+                <td>
+                  <a href="{{ url_for('calendar.day_detail', day=day.day_date.isoformat()) }}">
+                    {{ day.day_date.strftime('%a %b %d').replace(' 0', ' ') }}</a>
+                  {% if day.day_date == today %}<span class="badge badge-brand">Today</span>{% endif %}
+                </td>
+                <td>
+                  {% if day.in_session %}
+                    {% if school.uses_rotation %}
+                      <span class="cal-type {{ day.day_type|lower }}">{{ day.day_type }}</span>
+                    {% else %}<span class="muted">In session</span>{% endif %}
+                  {% else %}
+                    <span class="badge badge-warn">Closed</span>
+                  {% endif %}
+                </td>
+                <td class="muted" style="font-size:.82rem">
+                  {% if day.bell_schedule %}
+                    <span class="badge badge-info">{{ day.bell_schedule.name }}</span>
+                  {% else %}—{% endif %}
+                  {% if day.note %}<br>{{ day.note }}{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty"><strong>No dates configured</strong>Generate the calendar above.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

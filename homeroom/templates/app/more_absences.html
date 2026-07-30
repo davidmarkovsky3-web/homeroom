@@ -1,0 +1,241 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'more' %}
+{% set active_sub = 'absences' %}
+{% block title %}Absences — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Absences</h1>
+    <div class="sub">
+      {% if can_review %}Reported and planned absences awaiting a decision
+      {% else %}Report an absence that happened, or ask about one you're planning{% endif %}
+    </div>
+  </div>
+</div>
+
+{% if can_review %}
+<div class="row-between" style="margin-bottom:16px">
+  <div class="pill-nav">
+    <a href="{{ url_for('more.absences') }}" class="{{ 'active' if not status and not kind }}">All</a>
+    {% for option in statuses %}
+      <a href="{{ url_for('more.absences', status=option) }}"
+         class="{{ 'active' if status == option }}" style="text-transform:capitalize">{{ option }}</a>
+    {% endfor %}
+  </div>
+  <div class="pill-nav">
+    {% for key, label in kinds.items() %}
+      <a href="{{ url_for('more.absences', kind=key) }}"
+         class="{{ 'active' if kind == key }}">{{ 'Reports' if key == 'report' else 'Planned' }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head">
+      <h3>{{ 'Submitted' if can_review else 'Yours' }}</h3>
+      <span class="badge">{{ requests|length }}</span>
+    </div>
+    {% if requests %}
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr>{% if can_review %}<th>Student</th>{% endif %}
+                <th>Type</th><th>Dates</th><th class="num">Days</th><th>Reason</th>
+                <th>Outcome</th>{% if can_review %}<th class="tight"></th>{% endif %}</tr>
+          </thead>
+          <tbody>
+            {% for row in requests %}
+            <tr>
+              {% if can_review %}
+              <td>
+                <b>{{ row.student.display_name }}</b><br>
+                <small class="muted">Grade {{ row.student.grade_level or '—' }}
+                  {% if row.submitted_by %} · filed by {{ row.submitted_by.full_name }}{% endif %}</small>
+              </td>
+              {% endif %}
+              <td>
+                <span class="badge {{ 'badge-info' if row.is_report else 'badge-brand' }}">
+                  {{ 'Reported' if row.is_report else 'Planned' }}</span>
+              </td>
+              <td><b>{{ row.date_label }}</b><br>
+                <small class="muted">filed {{ row.submitted_at.date()|pretty_date }}</small></td>
+              <td class="num">{{ row.day_count }}</td>
+              <td>
+                {{ row.reason_label }}
+                {% if row.detail %}<br><small class="muted">{{ row.detail }}</small>{% endif %}
+              </td>
+              <td>
+                <span class="badge badge-{{ {'pending':'warn','approved':'ok','denied':'bad'}[row.status] }}">
+                  {{ row.decision_label }}</span>
+                {% if row.reviewer_note %}<br><small class="muted">{{ row.reviewer_note }}</small>{% endif %}
+              </td>
+              {% if can_review %}
+              <td class="tight">
+                {% if row.status == 'pending' %}
+                <div class="row" style="gap:5px; flex-wrap:nowrap">
+                  <form method="post" action="{{ url_for('more.decide_absence', request_id=row.id, action='approve') }}">
+                    <button class="btn btn-sm btn-soft" type="submit">
+                      {{ 'Excuse' if row.is_report else 'Approve' }}</button>
+                  </form>
+                  <form method="post" action="{{ url_for('more.decide_absence', request_id=row.id, action='deny') }}">
+                    <button class="btn btn-sm btn-ghost" type="submit">
+                      {{ 'Unexcuse' if row.is_report else 'Deny' }}</button>
+                  </form>
+                </div>
+                {% else %}
+                  <small class="muted">
+                    {{ row.reviewed_by.last_name if row.reviewed_by else '' }}</small>
+                {% endif %}
+              </td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">
+        <strong>Nothing here{% if status or kind %} with this filter{% endif %}</strong>
+        {% if can_submit %}Use the form to file one.
+        {% else %}Nothing has been submitted.{% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    {% if can_submit %}
+    <div class="card card-tint">
+      <h3>File an absence</h3>
+      <form method="post" id="absence-form">
+        {% if students|length > 1 %}
+        <div class="field">
+          <label for="student_id">Student</label>
+          <select id="student_id" name="student_id" required>
+            {% for student in students %}
+              <option value="{{ student.id }}">{{ student.full_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% elif students %}
+          <input type="hidden" name="student_id" value="{{ students[0].id }}">
+        {% endif %}
+
+        <fieldset>
+          <legend>Which is this?</legend>
+          <div class="check">
+            <input type="radio" id="kind-report" name="kind" value="report" checked>
+            <label for="kind-report"><b>Reporting an absence</b><br>
+              <span class="muted" style="font-weight:400">It already happened or is
+                happening today — illness, an emergency. The office decides whether to
+                excuse it.</span></label>
+          </div>
+          <div class="check">
+            <input type="radio" id="kind-request" name="kind" value="request">
+            <label for="kind-request"><b>Requesting a planned absence</b><br>
+              <span class="muted" style="font-weight:400">It hasn't happened yet — an
+                appointment, a trip. The office approves or denies it in advance.</span></label>
+          </div>
+        </fieldset>
+
+        <div class="grid grid-2" style="gap:0 12px">
+          <div class="field">
+            <label for="start_date">First day out</label>
+            <input id="start_date" name="start_date" type="date" required
+                   max="{{ today.isoformat() }}">
+          </div>
+          <div class="field">
+            <label for="end_date">Last day out</label>
+            <input id="end_date" name="end_date" type="date">
+            <div class="field-hint">Leave blank for one day.</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="reason">Reason</label>
+          <select id="reason" name="reason">
+            <optgroup label="Already happened" id="group-report">
+              {% for option in report_reasons %}
+                <option value="{{ option }}" data-kind="report">
+                  {{ reason_labels[option] }}</option>
+              {% endfor %}
+            </optgroup>
+            <optgroup label="Planned ahead" id="group-request">
+              {% for option in request_reasons %}
+                <option value="{{ option }}" data-kind="request">
+                  {{ reason_labels[option] }}</option>
+              {% endfor %}
+            </optgroup>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="detail">Anything the office should know</label>
+          <textarea id="detail" name="detail" style="min-height:70px"></textarea>
+        </div>
+        <button class="btn btn-block" type="submit" id="absence-submit">Report absence</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="card card-tint">
+      <h3>Why there are two</h3>
+      <p class="muted" style="font-size:.9rem; margin-bottom:8px">
+        You can't ask permission for a fever in advance — by the time you know about it,
+        it's already happened. So an <b>absence report</b> tells the office something that
+        is true, and they decide whether it's excused.
+      </p>
+      <p class="muted" style="font-size:.9rem; margin:0">
+        A <b>planned request</b> is the opposite: nothing has happened yet, and the school
+        can genuinely say no before you book the flight.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var form = document.getElementById('absence-form');
+    if (!form) return;
+
+    var start = document.getElementById('start_date');
+    var end = document.getElementById('end_date');
+    var reason = document.getElementById('reason');
+    var submit = document.getElementById('absence-submit');
+    var today = '{{ today.isoformat() }}';
+
+    function sync() {
+      var kind = form.querySelector('input[name=kind]:checked').value;
+      var report = kind === 'report';
+
+      // A report can't be in the future; a request can't be in the past.
+      [start, end].forEach(function (input) {
+        if (report) { input.max = today; input.removeAttribute('min'); }
+        else { input.min = today; input.removeAttribute('max'); }
+      });
+
+      // Only offer reasons that make sense for the chosen kind.
+      Array.prototype.forEach.call(reason.options, function (option) {
+        var matches = option.dataset.kind === kind;
+        option.hidden = !matches;
+        option.disabled = !matches;
+      });
+      if (reason.selectedOptions[0] && reason.selectedOptions[0].disabled) {
+        var first = Array.prototype.find.call(reason.options, function (o) {
+          return !o.disabled;
+        });
+        if (first) first.selected = true;
+      }
+
+      submit.textContent = report ? 'Report absence' : 'Submit request';
+    }
+
+    form.querySelectorAll('input[name=kind]').forEach(function (radio) {
+      radio.addEventListener('change', sync);
+    });
+    sync();
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,316 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'home' %}
+{% block title %}Home — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Good {{ 'morning' if now.hour < 12 else ('afternoon' if now.hour < 17 else 'evening') }}, {{ current_user.known_as }}</h1>
+    <div class="sub">
+      {{ today.strftime('%A, %B %d, %Y').replace(' 0', ' ') }} · {{ day_label or 'No school today' }}
+      {% if current_user.department %} · {{ current_user.department }}{% endif %}
+    </div>
+  </div>
+  <a class="btn btn-sm" href="{{ url_for('attendance.take') }}">Take attendance</a>
+</div>
+
+{# --- Coming up, first --- #}
+<div class="card" style="margin-bottom:18px">
+  <div class="card-head">
+    <h3>Coming up</h3>
+    <div class="row">
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('calendar.new_event') }}">Add event</a>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('more.important_dates') }}">Important dates</a>
+    </div>
+  </div>
+  {% if upcoming_events %}
+    <div class="grid grid-2">
+      {% for event in upcoming_events[:6] %}
+      {% set days_out = (event.event_date - today).days %}
+      <div class="row-between" style="gap:8px; align-items:flex-start">
+        <div style="min-width:0">
+          <b style="font-size:.9rem">{{ event.title }}</b>
+          <div class="muted" style="font-size:.79rem">
+            {{ event.event_date|pretty_date }}
+            {% if days_out == 0 %}· <b style="color:var(--bad)">today</b>
+            {% elif days_out == 1 %}· <b style="color:var(--warn)">tomorrow</b>{% endif %}
+            {% if event.course %} · {{ event.course.code }}{% endif %}
+          </div>
+        </div>
+        <span class="badge ev-{{ event.category }}" style="text-transform:capitalize">
+          {{ event.category }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">Nothing in the next three weeks.</div>
+  {% endif %}
+</div>
+
+{# --- Quick links --- #}
+<div class="quick-links" style="margin-bottom:18px">
+  <a class="quick-link" href="{{ url_for('grades.gradebook') }}"><span class="qi">📊</span> Gradebook
+    {% if ungraded %}<span class="badge badge-warn">{{ ungraded }}</span>{% endif %}</a>
+  <a class="quick-link" href="{{ url_for('assignments.teacher_index') }}"><span class="qi">📝</span> Assignments</a>
+  <a class="quick-link" href="{{ url_for('attendance.take') }}"><span class="qi">📅</span> Attendance</a>
+  <a class="quick-link" href="{{ url_for('support.my_sessions') }}"><span class="qi">🤝</span>
+    {{ school.support_label if school else 'Support' }}</a>
+  <a class="quick-link" href="{{ url_for('more.contacts') }}"><span class="qi">📇</span> Contacts</a>
+  <a class="quick-link" href="{{ url_for('documents.index') }}"><span class="qi">📄</span> Documents</a>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:18px">
+  <div class="stat">
+    <div class="stat-label">Sections</div>
+    <div class="stat-value">{{ my_courses|length }}</div>
+    <div class="stat-note">{{ today_courses|length }} meeting today</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Students</div>
+    <div class="stat-value">{{ roster_total }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Ungraded work</div>
+    <div class="stat-value" style="color:{{ 'var(--warn)' if ungraded else 'inherit' }}">{{ ungraded }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Need help in my subject</div>
+    <div class="stat-value" style="color:{{ 'var(--bad)' if needs_help else 'inherit' }}">
+      {{ needs_help|length }}</div>
+    <div class="stat-note">see bottom of page</div>
+  </div>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="stack">
+    {% if current_row and (current_row.course or current_row.support) %}
+      <div class="now-card">
+        <div class="label">Teaching now · {{ current_row.period.label }}</div>
+        {% if current_row.course %}
+          <h2>{{ current_row.course.name }}</h2>
+          <div class="meta">
+            {{ current_row.course.code }} · Rm {{ current_row.course.room or '—' }} ·
+            {{ current_row.course.seats_taken }} students ·
+            ends {{ current_row.end_time|pretty_time }}
+          </div>
+          <div style="margin-top:14px">
+            <a class="btn btn-sm" style="background:#fff; color:var(--brand-dark)"
+               href="{{ url_for('attendance.take', course=current_row.course.id) }}">Take attendance</a>
+          </div>
+        {% else %}
+          <h2>{{ current_row.support.name }}</h2>
+          <div class="meta">{{ current_row.support.seats_taken }} students signed up</div>
+        {% endif %}
+      </div>
+    {% elif next_row and (next_row.course or next_row.support) %}
+      <div class="now-card idle">
+        <div class="label">Up next · {{ next_row.period.label }}</div>
+        <h2>{{ next_row.course.name if next_row.course else next_row.support.name }}</h2>
+        <div class="meta">starts {{ next_row.start_time|pretty_time }}</div>
+      </div>
+    {% else %}
+      <div class="now-card idle">
+        <div class="label">Schedule</div>
+        <h2>No class in session</h2>
+        <div class="meta">{% if day_type %}Prep or planning period.{% else %}School isn't in session today.{% endif %}</div>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Today's sections</h3>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('main.schedule') }}">Full week</a>
+      </div>
+      {% set rows = schedule.rows | selectattr('course') | list %}
+      {% if rows %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead><tr><th>Period</th><th>Section</th><th>Room</th>
+                       <th class="num">Students</th><th class="tight"></th></tr></thead>
+            <tbody>
+              {% for row in rows %}
+              <tr class="{{ 'muted' if row.state == 'past' }}">
+                <td><b>{{ row.period.label }}</b><br>
+                  <small class="muted">{{ row.time_range }}</small></td>
+                <td>
+                  <a href="{{ url_for('courses.detail', course_id=row.course.id) }}">{{ row.course.name }}</a><br>
+                  <small class="muted mono">{{ row.course.code }}</small>
+                </td>
+                <td>{{ row.course.room or '—' }}</td>
+                <td class="num">{{ row.course.seats_taken }}</td>
+                <td class="tight">
+                  <a class="btn btn-sm {{ 'btn-soft' if row.state == 'current' else 'btn-ghost' }}"
+                     href="{{ url_for('attendance.take', course=row.course.id) }}">Attendance</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty"><strong>No sections today</strong>
+          {% if day_type %}Nothing of yours meets today.{% else %}School is not in session.{% endif %}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head">
+        <h3>Notification Center</h3>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('notices.index') }}">All</a>
+      </div>
+      {% if notices %}
+        <div class="stack">
+          {% for item in notices %}
+          <div class="row" style="gap:10px; align-items:flex-start">
+            <div style="font-size:1rem; line-height:1.3">
+              {%- if item.kind == 'announcement' -%}📢
+              {%- elif item.kind == 'grade' -%}📊
+              {%- elif item.kind == 'absence' -%}✉️
+              {%- else -%}🔔{%- endif -%}
+            </div>
+            <div style="min-width:0; flex:1">
+              <b style="font-size:.88rem; {{ 'color:var(--bad)' if item.urgent }}">{{ item.title }}</b>
+              {% if item.body %}
+                <div class="muted" style="font-size:.8rem">{{ item.body[:110] }}</div>{% endif %}
+              {% if item.link %}<a style="font-size:.79rem" href="{{ item.link }}">Open →</a>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">Nothing needs your attention.</div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Class averages</h3></div>
+      <div class="stack">
+        {% for course, average in averages %}
+        <div>
+          <div class="row-between" style="font-size:.88rem">
+            <span><b><a href="{{ url_for('grades.gradebook', course=course.id) }}">{{ course.code }}</a></b>
+              <span class="muted">· {{ course.seats_taken }}</span></span>
+            <b style="color:{{ average|grade_color }}">
+              {{ average|pct if average is not none else '—' }}</b>
+          </div>
+          {% if average is not none %}
+            <div class="meter"><span style="width:{{ [average, 100]|min }}%;
+                                            background:{{ average|grade_color }}"></span></div>
+          {% endif %}
+        </div>
+        {% else %}
+          <div class="empty">No sections assigned.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card {{ 'card-tint' if not my_support }}">
+      <div class="card-head">
+        <h3>My {{ (school.support_label if school else 'Support')|lower }} today</h3>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('support.my_sessions') }}">Manage</a>
+      </div>
+      {% if my_support %}
+        <div class="stack">
+          {% for item in my_support %}
+          <div class="row-between" style="font-size:.88rem">
+            <div style="min-width:0">
+              <b>{{ item.name }}</b>
+              <div class="muted" style="font-size:.79rem">{{ item.kind_label }}
+                · Rm {{ item.location or '—' }}</div>
+            </div>
+            <span class="badge">{{ item.seats_taken }}/{{ item.capacity }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted" style="font-size:.9rem; margin:0">
+          Nothing published for today.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# --- Students needing help: bottom of the page, with actions --- #}
+{% if needs_help %}
+<div class="card" style="margin-top:18px">
+  <div class="card-head">
+    <div>
+      <h3 style="margin:0">Students who may need more help</h3>
+      <div class="muted" style="font-size:.85rem">
+        In {{ current_user.department or 'your subject' }} — their grade in your class,
+        missing work, attendance, and
+        {{ subject_label or 'subject' }} test results. Other subjects aren't shown; they're
+        not yours to fix.
+      </div>
+    </div>
+    <span class="badge badge-warn">{{ needs_help|length }}</span>
+  </div>
+
+  <div class="table-wrap" style="border:none">
+    <table>
+      <thead>
+        <tr><th>Student</th><th>Section</th><th>Grade</th><th>Why</th><th>Help</th></tr>
+      </thead>
+      <tbody>
+        {% for entry in needs_help %}
+        <tr class="risk-row {{ 'risk-high' if entry.risk.level == 'high' else 'risk-watch' }}">
+          <td>
+            <b>{{ entry.student.display_name }}</b><br>
+            <small class="muted">Grade {{ entry.student.grade_level or '—' }}</small>
+          </td>
+          <td class="muted mono">{{ entry.course.code }}</td>
+          <td>
+            {% if entry.grade.percent is not none %}
+              <span class="grade-pill" style="color:{{ entry.grade.percent|grade_color }}">
+                <b>{{ entry.grade.letter }}</b> {{ entry.grade.percent }}%</span>
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+          <td>
+            <ul class="risk-reasons" style="margin:0; padding-left:16px">
+              {% for reason in entry.risk.reasons %}<li>{{ reason }}</li>{% endfor %}
+            </ul>
+          </td>
+          <td>
+            <div class="help-actions">
+              <a class="btn btn-sm btn-soft"
+                 href="{{ url_for('support.my_sessions') }}"
+                 title="Publish a session and have them sign up">Offer {{ (school.support_label if school else 'support')|lower }}</a>
+              <details style="display:inline-block">
+                <summary class="btn btn-sm btn-ghost" style="list-style:none">Send a nudge</summary>
+                <form method="post" action="{{ url_for('notices.nudge') }}"
+                      class="card card-tint" style="margin-top:8px; min-width:270px; text-align:left">
+                  <input type="hidden" name="student_id" value="{{ entry.student.id }}">
+                  <div class="field">
+                    <label>Subject</label>
+                    <input name="title" type="text"
+                           value="Let's get you caught up in {{ entry.course.name }}">
+                  </div>
+                  <div class="field">
+                    <label>Message</label>
+                    <textarea name="body" style="min-height:70px"
+                              placeholder="Come to my room during {{ school.support_label if school else 'support' }} and we'll work through it."></textarea>
+                  </div>
+                  <div class="check">
+                    <input type="checkbox" id="g-{{ entry.student.id }}-{{ entry.course.id }}"
+                           name="include_guardians">
+                    <label for="g-{{ entry.student.id }}-{{ entry.course.id }}">
+                      Also tell their guardians</label>
+                  </div>
+                  <button class="btn btn-sm btn-block" type="submit">Send</button>
+                </form>
+              </details>
+              <a class="btn btn-sm btn-ghost"
+                 href="{{ url_for('grades.course_detail', course_id=entry.course.id, student=entry.student.id) }}">Grades</a>
+              <a class="btn btn-sm btn-ghost" href="mailto:{{ entry.student.email }}">Email</a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

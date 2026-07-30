@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Homeroom{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231f4fd8'/><text x='16' y='23' font-size='19' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'>H</text></svg>">
+</head>
+<body>
+<div class="app-shell">
+
+  <header class="app-bar">
+    <div class="wrap">
+      <a class="logo" href="{{ url_for('main.home') }}"><span class="logo-mark">H</span> Homeroom</a>
+
+      {% if switchable_schools %}
+        <form method="post" action="{{ url_for('staff.switch_school') }}" class="school-switch">
+          <select name="school_id" onchange="this.form.submit()" aria-label="Active school">
+            {% for option in switchable_schools %}
+              <option value="{{ option.id }}" {% if school and option.id == school.id %}selected{% endif %}>
+                {{ option.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </form>
+      {% elif school %}
+        <span class="badge hide-sm" style="background:#2a3444; color:#aeb8c8">{{ school.name }}</span>
+      {% endif %}
+
+      <div class="app-user">
+        {# Bell glyph from Font Awesome Free 6 (CC BY 4.0), inlined so the app makes no
+           external requests and works offline. #}
+        <a class="bell" href="{{ url_for('notices.index') }}"
+           title="Notifications" aria-label="Notifications">
+          <svg viewBox="0 0 448 512" width="17" height="17" aria-hidden="true"
+               focusable="false"><path fill="currentColor" d="M224 0c-17.7 0-32 14.3-32
+            32V51.2C119 66 64 130.6 64 208v25.4c0 45.4-15.5 89.5-43.8 124.9L5.3
+            377c-3.7 4.6-4.4 10.9-1.9 16.2S10.9 402 16.8 402H431.2c5.9 0 11.3-3.4
+            13.8-8.7s1.8-11.6-1.9-16.2l-14.9-18.6c-28.3-35.5-43.8-79.6-43.8-124.9V208c0-77.4-55-142-128-156.8V32c0-17.7-14.3-32-32-32zm45.3
+            493.3c12-12 18.7-28.3 18.7-45.3H224 160c0 17 6.7 33.3 18.7 45.3s28.3 18.7
+            45.3 18.7 33.3-6.7 45.3-18.7z"/></svg>
+          {% if notice_count %}<span class="bell-badge">{{ notice_count }}</span>{% endif %}
+        </a>
+        <div class="avatar">{{ current_user.initials }}</div>
+        <div class="who hide-sm">
+          <b>{{ current_user.known_as }} {{ current_user.last_name }}</b>
+          <span>{{ current_user.role_label }}{% if current_user.is_student and current_user.grade_level %} · grade {{ current_user.grade_level }}{% endif %}</span>
+        </div>
+        <a class="signout" href="{{ url_for('auth.logout') }}">Sign out</a>
+      </div>
+    </div>
+  </header>
+
+  <nav class="app-tabs">
+    <div class="wrap">
+      {% set tab = active_tab|default('') %}
+
+      {% if current_user.is_parent %}
+        <a href="{{ url_for('parents.index') }}" class="{{ 'active' if tab == 'home' }}">Family</a>
+        <a href="{{ url_for('calendar.index') }}" class="{{ 'active' if tab == 'calendar' }}">Calendar</a>
+        <a href="{{ url_for('documents.index') }}" class="{{ 'active' if tab == 'documents' }}">Documents</a>
+
+      {% elif current_user.is_homeroom_staff %}
+        <a href="{{ url_for('staff.index') }}" class="{{ 'active' if tab == 'hq' }}">HQ</a>
+        <a href="{{ url_for('staff.demos') }}" class="{{ 'active' if tab == 'demos' }}">Demo Requests</a>
+        <a href="{{ url_for('staff.purchases') }}" class="{{ 'active' if tab == 'purchases' }}">Purchases</a>
+        <a href="{{ url_for('staff.districts') }}" class="{{ 'active' if tab == 'districts' }}">Districts</a>
+        <a href="{{ url_for('staff.schools') }}" class="{{ 'active' if tab == 'schools' }}">Provisioning</a>
+
+      {% elif current_user.is_district_admin %}
+        <a href="{{ url_for('district.index') }}" class="{{ 'active' if tab == 'home' }}">District</a>
+        <a href="{{ url_for('district.testing') }}" class="{{ 'active' if tab == 'testing' }}">Testing</a>
+        <a href="{{ url_for('district.staff_directory') }}" class="{{ 'active' if tab == 'staff' }}">Staff</a>
+        <a href="{{ url_for('staff.schools') }}" class="{{ 'active' if tab == 'schools' }}">Schools</a>
+        <a href="{{ url_for('admin.index') }}" class="{{ 'active' if tab == 'admin' }}">School Admin</a>
+        <a href="{{ url_for('grades.analytics') }}" class="{{ 'active' if tab == 'grades' }}">Test Scores</a>
+
+      {% else %}
+        <a href="{{ url_for('main.home') }}" class="{{ 'active' if tab == 'home' }}">Home</a>
+        <a href="{{ url_for('calendar.index') }}" class="{{ 'active' if tab == 'calendar' }}">Calendar</a>
+        <a href="{{ url_for('main.schedule') }}" class="{{ 'active' if tab == 'schedule' }}">Schedule</a>
+        <a href="{{ url_for('main.responsive_schedule') }}" class="{{ 'active' if tab == 'today' }}">Today</a>
+
+        {% if current_user.is_student %}
+          <a href="{{ url_for('grades.report') }}" class="{{ 'active' if tab == 'grades' }}">Grades</a>
+          <a href="{{ url_for('assignments.my_assignments') }}" class="{{ 'active' if tab == 'assignments' }}">Assignments</a>
+          <a href="{{ url_for('support.choose') }}" class="{{ 'active' if tab == 'support' }}">{{ support_label }}</a>
+          <a href="{{ url_for('attendance.my_attendance') }}" class="{{ 'active' if tab == 'attendance' }}">Attendance</a>
+          <a href="{{ url_for('courses.selection') }}" class="{{ 'active' if tab == 'selection' }}">Course Requests</a>
+
+        {% elif current_user.is_teacher %}
+          <a href="{{ url_for('grades.gradebook') }}" class="{{ 'active' if tab == 'grades' }}">Grades</a>
+          <a href="{{ url_for('assignments.teacher_index') }}" class="{{ 'active' if tab == 'assignments' }}">Assignments</a>
+          <a href="{{ url_for('support.my_sessions') }}" class="{{ 'active' if tab == 'support' }}">{{ support_label }}</a>
+          <a href="{{ url_for('attendance.take') }}" class="{{ 'active' if tab == 'attendance' }}">Attendance</a>
+
+        {% else %}{# school administrator #}
+          <a href="{{ url_for('grades.analytics') }}" class="{{ 'active' if tab == 'grades' }}">Test Scores</a>
+          <a href="{{ url_for('support.overview') }}" class="{{ 'active' if tab == 'support' }}">{{ support_label }}</a>
+          <a href="{{ url_for('attendance.overview') }}" class="{{ 'active' if tab == 'attendance' }}">Attendance</a>
+          <a href="{{ url_for('courses.review_requests') }}" class="{{ 'active' if tab == 'selection' }}">Course Requests</a>
+          <a href="{{ url_for('admin.index') }}" class="{{ 'active' if tab == 'admin' }}">Administration</a>
+        {% endif %}
+
+        <a href="{{ url_for('documents.index') }}" class="{{ 'active' if tab == 'documents' }}">Documents</a>
+      {% endif %}
+
+      <a href="{{ url_for('auth.account') }}" class="{{ 'active' if tab == 'account' }}">Account</a>
+      {% if not current_user.is_homeroom_staff %}
+        <a href="{{ url_for('more.index') }}" class="{{ 'active' if tab == 'more' }}">More ▾</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  {% if active_tab in ('more', 'notices') %}
+  <nav class="app-subtabs">
+    <div class="wrap">
+      {% set sub = active_sub|default('') %}
+      <a href="{{ url_for('more.index') }}" class="{{ 'active' if sub == 'index' }}">Overview</a>
+      <a href="{{ url_for('notices.index') }}" class="{{ 'active' if sub == 'notices' }}">Notifications</a>
+      <a href="{{ url_for('more.important_dates') }}" class="{{ 'active' if sub == 'dates' }}">Important dates</a>
+      <a href="{{ url_for('more.assessments') }}" class="{{ 'active' if sub == 'assessments' }}">Assessments</a>
+      <a href="{{ url_for('more.contacts') }}" class="{{ 'active' if sub == 'contacts' }}">Contacts</a>
+      <a href="{{ url_for('more.absences') }}" class="{{ 'active' if sub == 'absences' }}">Absences</a>
+      <a href="{{ url_for('more.health') }}" class="{{ 'active' if sub == 'health' }}">Health</a>
+      {% if current_user.is_admin or current_user.is_district_admin or current_user.is_homeroom_staff %}
+        <a href="{{ url_for('more.demographics') }}" class="{{ 'active' if sub == 'demographics' }}">Demographics</a>
+        <a href="{{ url_for('notices.announcements') }}" class="{{ 'active' if sub == 'announcements' }}">Announcements</a>
+        <a href="{{ url_for('importer.index') }}" class="{{ 'active' if sub == 'import' }}">Bulk import</a>
+      {% endif %}
+    </div>
+  </nav>
+  {% endif %}
+
+  <main class="app-main">
+    <div class="wrap">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flashes">
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

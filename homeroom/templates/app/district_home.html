@@ -1,0 +1,110 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'home' %}
+{% block title %}{{ district.name }} — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ district.name }}</h1>
+    <div class="sub">
+      <span class="mono">{{ district.code }}</span>
+      {% if district.state %} · {{ district.state }}{% endif %} ·
+      {{ totals.schools }} school{{ '' if totals.schools == 1 else 's' }}
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('district.testing') }}">Testing</a>
+    <a class="btn btn-sm" href="{{ url_for('staff.schools') }}">Manage schools</a>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:18px">
+  <div class="stat">
+    <div class="stat-label">Schools</div>
+    <div class="stat-value">{{ totals.schools }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Students</div>
+    <div class="stat-value">{{ '{:,}'.format(totals.students) }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Staff</div>
+    <div class="stat-value">{{ totals.staff }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Attendance today</div>
+    <div class="stat-value">{{ totals.attendance|pct if totals.attendance is not none else '—' }}</div>
+    {% if totals.attendance is not none %}
+      <div class="meter {{ 'meter-ok' if totals.attendance >= 94 else ('meter-warn' if totals.attendance >= 90 else 'meter-bad') }}">
+        <span style="width:{{ totals.attendance }}%"></span>
+      </div>
+    {% else %}
+      <div class="stat-note">Not yet submitted</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Schools in this district</h3>
+    <span class="badge">{{ rows|length }}</span>
+  </div>
+  {% if rows %}
+    <div class="table-wrap" style="border:none">
+      <table>
+        <thead>
+          <tr><th>School</th><th>Grades</th><th>Timetable</th>
+              <th class="num">Students</th><th class="num">Staff</th>
+              <th class="num">Courses</th><th>Attendance</th><th class="tight"></th></tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td>
+              <b>{{ row.school.name }}</b><br>
+              <small class="muted mono">{{ row.school.code }}</small>
+              {% if not row.school.active %}<span class="badge badge-bad">Inactive</span>{% endif %}
+            </td>
+            <td>{{ row.school.low_grade }}–{{ row.school.high_grade }}</td>
+            <td><span class="badge">{{ row.school.rotation_label }}</span></td>
+            <td class="num">{{ '{:,}'.format(row.students) }}</td>
+            <td class="num">{{ row.staff }}</td>
+            <td class="num">{{ row.courses }}</td>
+            <td style="min-width:120px">
+              {% if row.attendance is not none %}
+                {{ row.attendance }}%
+                <div class="meter {{ 'meter-ok' if row.attendance >= 94 else ('meter-warn' if row.attendance >= 90 else 'meter-bad') }}">
+                  <span style="width:{{ row.attendance }}%"></span>
+                </div>
+              {% else %}<span class="muted">—</span>{% endif %}
+            </td>
+            <td class="tight">
+              <form method="post" action="{{ url_for('staff.switch_school') }}">
+                <input type="hidden" name="school_id" value="{{ row.school.id }}">
+                <button class="btn btn-sm btn-ghost" type="submit">Open</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty"><strong>No schools yet</strong>
+      Add the first school to this district.
+      <div style="margin-top:16px">
+        <a class="btn" href="{{ url_for('staff.schools') }}">Create a school</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<div class="card card-tint" style="margin-top:18px">
+  <h3>Working inside a school</h3>
+  <p class="muted" style="font-size:.9rem; margin:0">
+    “Open” switches your active school. Every other tab — attendance, courses, test scores,
+    administration — then operates on that school until you switch again. The selector in the
+    top bar does the same thing.
+  </p>
+</div>
+{% endblock %}

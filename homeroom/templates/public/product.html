@@ -1,0 +1,175 @@
+{% extends "base_public.html" %}
+{% block title %}Product — Homeroom{% endblock %}
+
+{% block body %}
+<section class="hero" style="padding-bottom:48px">
+  <div class="wrap center">
+    <span class="eyebrow">Product</span>
+    <h1>Built around the school day, not the database</h1>
+    <p class="lead">Homeroom models bell periods, rotation days and ranked course requests
+       as first-class ideas — so the software matches how your school already works.</p>
+  </div>
+</section>
+
+<section class="section" id="home">
+  <div class="wrap grid grid-sidebar">
+    <div>
+      <h2>Home</h2>
+      <p>The dashboard changes shape by role. A student sees their current period, the next
+         bell, recent attendance and whether course selection is still open. A teacher sees
+         today's sections and which rosters still need attendance taken. An administrator sees
+         enrollment counts, the school-wide attendance rate, pending course requests and new
+         demo and purchase requests from the marketing site.</p>
+      <p>Nothing on the dashboard is decorative — every tile links to the screen where you'd
+         act on it.</p>
+    </div>
+    <div class="card card-tint">
+      <div class="stat-label">Student dashboard</div>
+      <div class="stack" style="margin-top:12px">
+        <div class="now-card">
+          <div class="label">Right now · A Day</div>
+          <h2>Chemistry</h2>
+          <div class="meta">Room 303 · P. Raghunathan</div>
+          <div style="margin-top:14px"><span class="countdown">22</span> min left</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-tint" id="scheduling">
+  <div class="wrap grid grid-sidebar">
+    <div>
+      <h2>Scheduling</h2>
+      <p>Administrators define the bell schedule once — named periods with start and end times —
+         then assign each section a period, a room, a teacher and the rotation days it meets on
+         (A, B, or both). Homeroom refuses to double-book a student into two sections that share
+         a period and a rotation day.</p>
+      <p>The <strong>Schedule</strong> tab renders the full Monday–Friday grid, greying out
+         sections that don't meet on that day's rotation. The
+         <strong>Responsive Schedule</strong> tab collapses to a single day designed for a phone:
+         a large "right now" card, a live countdown to the bell, and a scrollable timeline of the
+         rest of the day. It refreshes itself without a page reload.</p>
+      <ul>
+        <li>Named bell periods with real start and end times</li>
+        <li>A/B rotation days and no-school days on the calendar</li>
+        <li>Conflict detection at enrollment time</li>
+        <li>Printable week grids for counselor meetings</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Week of Sep 14</h3><span class="badge badge-brand">A / B</span></div>
+      <table class="sched-grid">
+        <tr>
+          <td><div class="period-label"><b>Period 1</b><span>8:00 – 8:50 AM</span></div></td>
+          <td><div class="sched-cell"><b>Biology</b><div class="meta">Rm 301</div></div></td>
+          <td><div class="sched-cell empty-cell"></div></td>
+        </tr>
+        <tr>
+          <td><div class="period-label"><b>Period 2</b><span>8:57 – 9:47 AM</span></div></td>
+          <td><div class="sched-cell"><b>Spanish II</b><div class="meta">Rm 115</div></div></td>
+          <td><div class="sched-cell"><b>Spanish II</b><div class="meta">Rm 115</div></div></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="attendance">
+  <div class="wrap grid grid-sidebar">
+    <div>
+      <h2>Attendance</h2>
+      <p>Teachers take attendance per section, per day, with four states: present, absent, tardy
+         and excused. The roster defaults everyone to present, so a normal day is two taps. Notes
+         attach to individual records for parent calls and nurse passes.</p>
+      <p>Students see their own record — a term attendance rate, a per-course breakdown and a
+         recent history. Administrators get a daily overview: the school-wide rate, who was marked
+         absent or tardy, which sections still haven't submitted, and a chronic-absence list for
+         the term.</p>
+    </div>
+    <div class="card card-tint">
+      <div class="card-head"><h3>Period 3 · Chemistry</h3><span class="badge badge-warn">Not yet taken</span></div>
+      <div class="stack">
+        <div class="row-between"><span>Abernathy, Amara</span>
+          <span class="badge badge-ok">Present</span></div>
+        <div class="row-between"><span>Bergstrom, Beckett</span>
+          <span class="badge badge-bad">Absent</span></div>
+        <div class="row-between"><span>Castellanos, Camila</span>
+          <span class="badge badge-warn">Tardy</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-tint" id="selection">
+  <div class="wrap grid grid-sidebar">
+    <div>
+      <h2>Course selection</h2>
+      <p>Administrators open a selection window with a date range and a required number of
+         choices. For each choice a student submits a <strong>1st pick</strong> and an optional
+         <strong>2nd pick</strong> alternate, so counselors have a fallback the moment a section
+         fills or a period conflicts.</p>
+      <p>Homeroom validates as the student submits: no duplicate first picks, no picking the same
+         course as both your 1st and 2nd, and every required slot filled before the form is
+         accepted. Counselors then approve or deny request by request; approving a request seats
+         the student automatically unless the section is already full.</p>
+    </div>
+    <div class="card">
+      <div class="slot-card" style="margin-bottom:10px">
+        <div class="row"><span class="slot-num">1</span><b>Choice 1</b>
+          <span class="badge badge-ok" style="margin-left:auto">Approved</span></div>
+        <div class="pick-grid">
+          <div><div class="pick-tag pick-1">1st pick</div><div>MTH410 · AP Calculus AB</div></div>
+          <div><div class="pick-tag pick-2">2nd pick</div><div>MTH310 · Pre-Calculus</div></div>
+        </div>
+      </div>
+      <div class="slot-card" style="margin:0">
+        <div class="row"><span class="slot-num">2</span><b>Choice 2</b>
+          <span class="badge badge-warn" style="margin-left:auto">Pending</span></div>
+        <div class="pick-grid">
+          <div><div class="pick-tag pick-1">1st pick</div><div>CSC340 · AP Computer Science A</div></div>
+          <div><div class="pick-tag pick-2">2nd pick</div><div>CSC210 · Intro to CS</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="calendar">
+  <div class="wrap grid grid-sidebar">
+    <div>
+      <h2>Calendar</h2>
+      <p>One month grid carries the whole school year: which rotation day each date is, which
+         dates have no school, and every assembly, exam, deadline and game. Events can be scoped
+         to a single course or a single grade level, so a student's calendar shows their unit
+         tests alongside the school-wide dates without the noise of everyone else's.</p>
+      <p>Teachers create events for their own sections. Administrators create anything and set
+         the rotation for any date.</p>
+    </div>
+    <div class="card card-tint">
+      <div class="legend" style="margin-bottom:12px">
+        <span><i style="background:var(--bad)"></i>Exam</span>
+        <span><i style="background:var(--warn)"></i>No school</span>
+        <span><i style="background:var(--info)"></i>Assembly</span>
+        <span><i style="background:var(--accent)"></i>Sports</span>
+      </div>
+      <div class="stack">
+        <div class="row-between"><span><b>Sep 18</b> · Homecoming assembly</span><span class="badge badge-info">Assembly</span></div>
+        <div class="row-between"><span><b>Sep 22</b> · SCI230 unit test</span><span class="badge badge-bad">Exam</span></div>
+        <div class="row-between"><span><b>Sep 26</b> · Teacher in-service</span><span class="badge badge-warn">No school</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-tint">
+  <div class="wrap-narrow center">
+    <h2>Want to try it against your data?</h2>
+    <p class="muted">Send us a course export and we'll stand up a demo tenant with your real sections.</p>
+    <div class="row" style="justify-content:center; margin-top:18px">
+      <a class="btn btn-lg" href="{{ url_for('public.demo') }}">Request a demo</a>
+      <a class="btn btn-lg btn-ghost" href="{{ url_for('public.pricing') }}">See pricing</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'more' %}
+{% set active_sub = 'health' %}
+{% block title %}Health — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Health</h1>
+    <div class="sub">
+      {% if can_edit %}Nurse office records · {{ students|length }} students
+      {% else %}What the nurse's office has on file{% endif %}
+    </div>
+  </div>
+</div>
+
+{% if flagged %}
+<div class="card risk-row risk-high" style="margin-bottom:18px">
+  <div class="row" style="gap:12px; align-items:flex-start">
+    <div style="font-size:1.3rem">🚨</div>
+    <div>
+      <b>{{ flagged|length }} student{{ '' if flagged|length == 1 else 's' }} with an action plan on file</b>
+      <p class="muted" style="margin:4px 0 0; font-size:.9rem">
+        {{ flagged | map(attribute='full_name') | join(', ') }}
+      </p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if students %}
+<div class="stack">
+  {% for student in students %}
+  {% set record = records.get(student.id) %}
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h3 style="margin:0">{{ student.full_name }}</h3>
+        <div class="muted" style="font-size:.84rem">
+          Grade {{ student.grade_level or '—' }} ·
+          <span class="mono">{{ student.student_number or '—' }}</span>
+          {% if student.emergency_contact_name %}
+            · emergency: {{ student.emergency_contact_name }}
+            {{ student.emergency_contact_phone }}{% endif %}
+        </div>
+      </div>
+      {% if record and record.has_action_plan %}
+        <span class="badge badge-bad">Action plan</span>
+      {% elif record and not record.is_empty %}
+        <span class="badge badge-ok">On file</span>
+      {% else %}
+        <span class="badge">Nothing recorded</span>
+      {% endif %}
+    </div>
+
+    {% if record and not record.is_empty %}
+      <div class="grid grid-2">
+        <dl class="kv" style="grid-template-columns:130px 1fr">
+          <dt>Allergies</dt><dd>{{ record.allergies or '—' }}</dd>
+          <dt>Medications</dt><dd>{{ record.medications or '—' }}</dd>
+          <dt>Conditions</dt><dd>{{ record.conditions or '—' }}</dd>
+        </dl>
+        <dl class="kv" style="grid-template-columns:130px 1fr">
+          <dt>Dietary notes</dt><dd>{{ record.dietary_notes or '—' }}</dd>
+          <dt>Physician</dt>
+          <dd>{{ record.physician_name or '—' }}
+            {% if record.physician_phone %}<br><span class="mono">{{ record.physician_phone }}</span>{% endif %}</dd>
+          <dt>Insurance</dt><dd>{{ record.insurance_provider or '—' }}</dd>
+        </dl>
+      </div>
+      {% if record.has_action_plan and record.action_plan_note %}
+        <div class="flash flash-warning" style="margin-top:12px; margin-bottom:0">
+          <b>Action plan:</b>&nbsp;{{ record.action_plan_note }}
+        </div>
+      {% endif %}
+      {% if record.updated_by %}
+        <p class="field-hint" style="margin:12px 0 0">
+          Last updated by {{ record.updated_by.full_name }}
+          on {{ record.updated_at.date()|pretty_date }}.
+        </p>
+      {% endif %}
+    {% elif not can_edit %}
+      <p class="muted" style="margin:0; font-size:.9rem">
+        Nothing on file. Contact the office to add allergy or medication information.
+      </p>
+    {% endif %}
+
+    {% if can_edit %}
+    <hr class="divider">
+    <details>
+      <summary class="btn btn-sm btn-ghost" style="list-style:none; display:inline-flex">
+        {{ 'Edit record' if record and not record.is_empty else 'Add a record' }}</summary>
+      <form method="post" action="{{ url_for('more.save_health', student_id=student.id) }}"
+            style="margin-top:14px">
+        <div class="grid grid-2" style="gap:0 14px">
+          <div class="field">
+            <label>Allergies</label>
+            <input name="allergies" type="text" value="{{ record.allergies if record else '' }}"
+                   placeholder="Peanuts, bee stings">
+          </div>
+          <div class="field">
+            <label>Medications</label>
+            <input name="medications" type="text" value="{{ record.medications if record else '' }}"
+                   placeholder="Inhaler as needed">
+          </div>
+          <div class="field">
+            <label>Conditions</label>
+            <input name="conditions" type="text" value="{{ record.conditions if record else '' }}"
+                   placeholder="Asthma">
+          </div>
+          <div class="field">
+            <label>Dietary notes</label>
+            <input name="dietary_notes" type="text"
+                   value="{{ record.dietary_notes if record else '' }}">
+          </div>
+          <div class="field">
+            <label>Physician</label>
+            <input name="physician_name" type="text"
+                   value="{{ record.physician_name if record else '' }}">
+          </div>
+          <div class="field">
+            <label>Physician phone</label>
+            <input name="physician_phone" type="tel"
+                   value="{{ record.physician_phone if record else '' }}">
+          </div>
+        </div>
+        <div class="field">
+          <label>Insurance provider</label>
+          <input name="insurance_provider" type="text"
+                 value="{{ record.insurance_provider if record else '' }}">
+        </div>
+        <div class="check">
+          <input type="checkbox" id="ap-{{ student.id }}" name="has_action_plan"
+                 {% if record and record.has_action_plan %}checked{% endif %}>
+          <label for="ap-{{ student.id }}">Has an emergency action plan</label>
+        </div>
+        <div class="field">
+          <label>Action plan note</label>
+          <input name="action_plan_note" type="text"
+                 value="{{ record.action_plan_note if record else '' }}"
+                 placeholder="EpiPen in nurse's office and classroom kit">
+        </div>
+        <button class="btn btn-sm" type="submit">Save record</button>
+      </form>
+    </details>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card"><div class="empty"><strong>No students</strong>
+  Nothing to show here.</div></div>
+{% endif %}
+
+<div class="card card-tint" style="margin-top:18px">
+  <h3>Who can see this</h3>
+  <p class="muted" style="font-size:.9rem; margin:0">
+    Staff at the school, the student themselves, and guardians linked to that student.
+    Nobody else — health information isn't part of the general directory.
+  </p>
+</div>
+{% endblock %}

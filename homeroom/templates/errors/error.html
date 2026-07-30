@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ code }} — Homeroom</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card center">
+    <a class="logo" href="{{ url_for('public.home') }}" style="justify-content:center">
+      <span class="logo-mark">H</span> Homeroom
+    </a>
+    <div class="card" style="margin-top:22px">
+      <div style="font-size:3rem; font-weight:750; letter-spacing:-.04em; color:var(--ink-3)">{{ code }}</div>
+      <p class="muted">{{ message }}</p>
+      <div class="row" style="justify-content:center">
+        {% if current_user.is_authenticated %}
+          <a class="btn" href="{{ url_for('main.home') }}">Back to Home</a>
+        {% else %}
+          <a class="btn" href="{{ url_for('auth.login') }}">Sign in</a>
+        {% endif %}
+        <a class="btn btn-ghost" href="{{ url_for('public.home') }}">Marketing site</a>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

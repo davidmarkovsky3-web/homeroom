@@ -1,0 +1,97 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'assignments' %}
+{% block title %}Assignments — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Assignments</h1>
+    <div class="sub">{% if course %}{{ course.name }} ·
+      <span class="mono">{{ course.code }}</span>{% else %}No sections{% endif %}</div>
+  </div>
+  {% if course %}
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('grades.gradebook', course=course.id) }}">Gradebook</a>
+    <a class="btn btn-sm" href="{{ url_for('assignments.new_assignment', course=course.id) }}">
+      New assignment</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if my_courses %}
+<div class="card" style="margin-bottom:18px; padding:14px 18px">
+  <div class="row" style="gap:8px">
+    <b style="font-size:.85rem; color:var(--ink-3)">Section:</b>
+    {% for option in my_courses %}
+      <a class="btn btn-sm {{ 'btn-soft' if course and option.id == course.id else 'btn-ghost' }}"
+         href="{{ url_for('assignments.teacher_index', course=option.id) }}">{{ option.code }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if course %}
+<div class="card">
+  <div class="card-head">
+    <h3>All assignments</h3>
+    <span class="badge">{{ assignments|length }}</span>
+  </div>
+  {% if assignments %}
+    <div class="table-wrap" style="border:none">
+      <table>
+        <thead>
+          <tr><th>Assignment</th><th>Category</th><th>Due</th><th class="num">Points</th>
+              <th class="num">Graded</th><th class="num">Average</th><th>Visible</th>
+              <th class="tight"></th></tr>
+        </thead>
+        <tbody>
+          {% for assignment in assignments %}
+          <tr>
+            <td>
+              <a href="{{ url_for('assignments.detail', assignment_id=assignment.id) }}">
+                <b>{{ assignment.title }}</b></a>
+              {% if not assignment.graded %}
+                <span class="badge">Not graded</span>{% endif %}
+            </td>
+            <td class="muted">{{ assignment.category.name if assignment.category else '—' }}</td>
+            <td>
+              {{ assignment.due_on|pretty_date if assignment.due_on else '—' }}
+              {% if assignment.is_overdue %}<br><small class="muted">past due</small>{% endif %}
+            </td>
+            <td class="num">{{ '%g'|format(assignment.points_possible) }}</td>
+            <td class="num">{{ assignment.graded_count }} / {{ assignment.grades|length }}</td>
+            <td class="num">
+              {% if assignment.average_percent is not none %}
+                <b style="color:{{ assignment.average_percent|grade_color }}">
+                  {{ assignment.average_percent }}%</b>
+              {% else %}<span class="muted">—</span>{% endif %}
+            </td>
+            <td>
+              <span class="badge badge-{{ 'ok' if assignment.published else 'warn' }}">
+                {{ 'Published' if assignment.published else 'Hidden' }}</span>
+            </td>
+            <td class="tight">
+              <a class="btn btn-sm btn-ghost"
+                 href="{{ url_for('assignments.detail', assignment_id=assignment.id) }}">Grade</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">
+      <strong>No assignments yet</strong>
+      Create the first one for {{ course.code }}.
+      <div style="margin-top:16px">
+        <a class="btn" href="{{ url_for('assignments.new_assignment', course=course.id) }}">
+          New assignment</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="card"><div class="empty"><strong>No sections</strong>
+  You aren't assigned to teach anything yet.</div></div>
+{% endif %}
+{% endblock %}

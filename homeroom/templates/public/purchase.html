@@ -1,0 +1,174 @@
+{% extends "base_public.html" %}
+{% block title %}Request a quote — Homeroom{% endblock %}
+
+{% block body %}
+<section class="section">
+  <div class="wrap grid grid-sidebar">
+    <div class="card">
+      <h1 style="font-size:1.7rem">Request a quote</h1>
+      <p class="muted">We'll return a formal quote you can attach to a purchase order, usually the
+         same day. Nothing on this form is a binding order.</p>
+
+      <form method="post" novalidate id="quote-form">
+        <fieldset>
+          <legend>Plan</legend>
+          {% for key, plan in plans.items() %}
+          <div class="check">
+            <input type="radio" id="plan-{{ key }}" name="plan" value="{{ key }}"
+                   data-price="{{ plan.price_per_student }}"
+                   {% if (form.get('plan') or selected) == key %}checked{% endif %}>
+            <label for="plan-{{ key }}">
+              <b>{{ plan.name }}</b> — ${{ '%.2f'|format(plan.price_per_student) }}/student/year<br>
+              <span class="muted" style="font-weight:400">{{ plan.blurb }}</span>
+            </label>
+          </div>
+          {% endfor %}
+        </fieldset>
+
+        <div class="grid grid-2" style="gap:0 16px">
+          <div class="field">
+            <label for="seats">Student seats *</label>
+            <input id="seats" name="seats" type="number" min="25" step="25" required
+                   value="{{ form.get('seats', 500) }}">
+            <div class="field-hint">Minimum 25. Staff accounts are not counted.</div>
+          </div>
+          <div class="field">
+            <label for="term_length">Contract term</label>
+            <select id="term_length" name="term_length">
+              {% for option in ['1 year', '2 years', '3 years'] %}
+                <option {% if form.get('term_length') == option %}selected{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
+            <div class="field-hint">Multi-year terms are discounted on the final quote.</div>
+          </div>
+        </div>
+
+        <div class="card card-tint" style="margin-bottom:18px">
+          <div class="row-between">
+            <div>
+              <div class="stat-label">Estimated annual list price</div>
+              <small class="muted">Before multi-year and add-on adjustments</small>
+            </div>
+            <div class="stat-value" id="estimate">—</div>
+          </div>
+        </div>
+
+        <fieldset>
+          <legend>Billing contact</legend>
+          <div class="grid grid-2" style="gap:0 16px">
+            <div class="field">
+              <label for="organization">School or district *</label>
+              <input id="organization" name="organization" type="text" required
+                     value="{{ form.get('organization', '') }}">
+            </div>
+            <div class="field">
+              <label for="contact_name">Contact name *</label>
+              <input id="contact_name" name="contact_name" type="text" required
+                     value="{{ form.get('contact_name', '') }}">
+            </div>
+            <div class="field">
+              <label for="contact_email">Contact email *</label>
+              <input id="contact_email" name="contact_email" type="email" required
+                     value="{{ form.get('contact_email', '') }}">
+            </div>
+            <div class="field">
+              <label for="phone">Phone</label>
+              <input id="phone" name="phone" type="tel" value="{{ form.get('phone', '') }}">
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label for="billing_address">Billing address</label>
+            <textarea id="billing_address" name="billing_address" style="min-height:80px">{{ form.get('billing_address', '') }}</textarea>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Payment</legend>
+          <div class="grid grid-2" style="gap:0 16px">
+            <div class="field">
+              <label for="payment_method">Method</label>
+              <select id="payment_method" name="payment_method">
+                <option value="purchase_order" {% if form.get('payment_method') == 'purchase_order' %}selected{% endif %}>Purchase order</option>
+                <option value="ach" {% if form.get('payment_method') == 'ach' %}selected{% endif %}>ACH / bank transfer</option>
+                <option value="credit_card" {% if form.get('payment_method') == 'credit_card' %}selected{% endif %}>Credit card</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="po_number">PO number (if you have one)</label>
+              <input id="po_number" name="po_number" type="text" value="{{ form.get('po_number', '') }}">
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Add-ons</legend>
+          {% set chosen = form.getlist('add_ons') if form.getlist is defined else [] %}
+          {% for value, label in add_ons %}
+          <div class="check">
+            <input type="checkbox" id="a-{{ value }}" name="add_ons" value="{{ value }}"
+                   {% if value in chosen %}checked{% endif %}>
+            <label for="a-{{ value }}">{{ label }}</label>
+          </div>
+          {% endfor %}
+        </fieldset>
+
+        <div class="field">
+          <label for="notes">Notes for the quote</label>
+          <textarea id="notes" name="notes"
+                    placeholder="Fiscal year start, board approval dates, procurement requirements…">{{ form.get('notes', '') }}</textarea>
+        </div>
+
+        <button class="btn btn-lg btn-block" type="submit">Submit quote request</button>
+        <p class="field-hint center" style="margin-top:12px">
+          Submitting does not create an order or a charge.
+        </p>
+      </form>
+    </div>
+
+    <div class="stack">
+      <div class="card card-tint">
+        <h3>How quoting works</h3>
+        <ol class="muted" style="padding-left:20px; margin:0; font-size:.92rem">
+          <li style="margin-bottom:8px">You submit seats, plan and billing contact.</li>
+          <li style="margin-bottom:8px">We send a PDF quote with the final discounted total.</li>
+          <li style="margin-bottom:8px">Your business office issues a PO against the quote.</li>
+          <li>We invoice on the PO and provision your tenant.</li>
+        </ol>
+      </div>
+      <div class="card card-tint">
+        <h3>Plan comparison</h3>
+        <p class="muted" style="font-size:.92rem">Not sure which tier fits? The feature matrix
+           lays out exactly what changes between plans.</p>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('public.pricing') }}">Compare plans</a>
+      </div>
+      <div class="card card-tint">
+        <h3>Rather see it first?</h3>
+        <p class="muted" style="font-size:.92rem">Most schools book a demo before requesting a quote.</p>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('public.demo') }}">Request a demo</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var seats = document.getElementById('seats');
+    var estimate = document.getElementById('estimate');
+    var plans = document.querySelectorAll('input[name=plan]');
+
+    function price() {
+      var checked = document.querySelector('input[name=plan]:checked');
+      var n = parseInt(seats.value, 10);
+      if (!checked || !n || n < 1) { estimate.textContent = '—'; return; }
+      var total = parseFloat(checked.dataset.price) * n;
+      estimate.textContent = '$' + total.toLocaleString('en-US', {
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+      });
+    }
+
+    seats.addEventListener('input', price);
+    plans.forEach(function (p) { p.addEventListener('change', price); });
+    price();
+  })();
+</script>
+{% endblock %}

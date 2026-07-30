@@ -1,0 +1,156 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'selection' %}
+{% block title %}Course Requests — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Course requests</h1>
+    <div class="sub">{{ window.name if window else 'No selection windows yet' }}</div>
+  </div>
+  <div class="row">
+    {% if windows|length > 1 %}
+    <form method="get" class="row" style="gap:6px">
+      <select name="window" onchange="this.form.submit()">
+        {% for w in windows %}
+          <option value="{{ w.id }}" {% if window and w.id == window.id %}selected{% endif %}>{{ w.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% endif %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('courses.windows') }}">Manage windows</a>
+  </div>
+</div>
+
+{% if window %}
+<div class="grid grid-4" style="margin-bottom:18px">
+  <div class="stat">
+    <div class="stat-label">Pending</div>
+    <div class="stat-value" style="color:var(--warn)">{{ counts.get('pending', 0) }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Approved</div>
+    <div class="stat-value" style="color:var(--ok)">{{ counts.get('approved', 0) }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Denied</div>
+    <div class="stat-value" style="color:var(--bad)">{{ counts.get('denied', 0) }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Students with requests</div>
+    <div class="stat-value">{{ grouped|length }}</div>
+  </div>
+</div>
+
+<div class="row-between" style="margin-bottom:14px">
+  <div class="pill-nav">
+    <a href="{{ url_for('courses.review_requests', window=window.id) }}"
+       class="{{ 'active' if not status }}">All</a>
+    <a href="{{ url_for('courses.review_requests', window=window.id, status='pending') }}"
+       class="{{ 'active' if status == 'pending' }}">Pending</a>
+    <a href="{{ url_for('courses.review_requests', window=window.id, status='approved') }}"
+       class="{{ 'active' if status == 'approved' }}">Approved</a>
+    <a href="{{ url_for('courses.review_requests', window=window.id, status='denied') }}"
+       class="{{ 'active' if status == 'denied' }}">Denied</a>
+  </div>
+  <span class="muted" style="font-size:.86rem">
+    {{ window.opens_on|pretty_date }} – {{ window.closes_on|pretty_date }}
+  </span>
+</div>
+
+{% if grouped %}
+  <div class="stack">
+    {% for student, records in grouped %}
+    <div class="card">
+      <div class="card-head">
+        <div class="row">
+          <div class="avatar" style="background:var(--bg-3); color:var(--ink-2)">{{ student.initials }}</div>
+          <div>
+            <h3 style="margin:0">{{ student.display_name }}</h3>
+            <div class="muted" style="font-size:.82rem">
+              Grade {{ student.grade_level or '—' }} ·
+              <span class="mono">{{ student.student_number or '—' }}</span> ·
+              {{ records|length }} requests
+            </div>
+          </div>
+        </div>
+        <a class="btn btn-ghost btn-sm"
+           href="{{ url_for('attendance.student_detail', student_id=student.id) }}">Attendance</a>
+      </div>
+
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr>
+              <th class="tight">Choice</th><th>Rank</th><th>Course</th>
+              <th class="hide-sm">Period</th><th class="hide-sm">Seats</th><th>Status</th><th class="tight"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in records %}
+            <tr>
+              <td class="tight center"><b>{{ record.slot }}</b></td>
+              <td class="tight">
+                <span class="pick-tag {{ 'pick-1' if record.rank == 1 else 'pick-2' }}">{{ record.rank_label }}</span>
+              </td>
+              <td>
+                <a href="{{ url_for('courses.detail', course_id=record.course.id) }}">{{ record.course.name }}</a><br>
+                <small class="muted mono">{{ record.course.code }}</small>
+              </td>
+              <td class="hide-sm">{{ record.course.period.label if record.course.period else '—' }}</td>
+              <td class="hide-sm">
+                <span class="badge {{ 'badge-bad' if record.course.is_full else 'badge-ok' }}">
+                  {{ record.course.seats_taken }}/{{ record.course.capacity }}</span>
+              </td>
+              <td>
+                <span class="badge badge-{{ {'pending':'warn','approved':'ok','denied':'bad'}[record.status] }}">
+                  {{ record.status }}</span>
+              </td>
+              <td class="tight">
+                <div class="row" style="gap:5px; flex-wrap:nowrap">
+                  {% if record.status != 'approved' %}
+                  <form method="post" action="{{ url_for('courses.decide_request', request_id=record.id, action='approve') }}">
+                    <button class="btn btn-sm btn-soft" type="submit">Approve</button>
+                  </form>
+                  {% endif %}
+                  {% if record.status != 'denied' %}
+                  <form method="post" action="{{ url_for('courses.decide_request', request_id=record.id, action='deny') }}">
+                    <button class="btn btn-sm btn-ghost" type="submit">Deny</button>
+                  </form>
+                  {% endif %}
+                  {% if record.status != 'pending' %}
+                  <form method="post" action="{{ url_for('courses.decide_request', request_id=record.id, action='reset') }}">
+                    <button class="btn btn-sm btn-ghost" type="submit">Reset</button>
+                  </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card">
+    <div class="empty">
+      <strong>No requests{% if status %} with status “{{ status }}”{% endif %}</strong>
+      {% if status %}Try a different filter.{% else %}No students have submitted picks for this window yet.{% endif %}
+    </div>
+  </div>
+{% endif %}
+
+{% else %}
+<div class="card">
+  <div class="empty">
+    <strong>No selection windows</strong>
+    Create a window before students can submit course requests.
+    {% if current_user.is_admin %}
+      <div style="margin-top:16px"><a class="btn" href="{{ url_for('courses.windows') }}">Create a window</a></div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

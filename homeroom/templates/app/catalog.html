@@ -1,0 +1,92 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'selection' %}
+{% block title %}Course catalog — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Course catalog</h1>
+    <div class="sub">
+      {{ courses|length }} sections{% if term %} · {{ term.name }}, {{ term.school_year }}{% endif %}
+    </div>
+  </div>
+  <div class="row">
+    {% if current_user.is_student %}
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('courses.selection') }}">← Course requests</a>
+    {% else %}
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('courses.review_requests') }}">← Course requests</a>
+    {% endif %}
+    {% if current_user.is_admin %}
+      <a class="btn btn-sm" href="{{ url_for('admin.courses') }}">Manage courses</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:18px; padding:16px 18px">
+  <form method="get" class="row" style="gap:10px">
+    <input type="text" name="q" value="{{ search }}" placeholder="Search by name or code"
+           style="max-width:280px">
+    <select name="department" style="max-width:220px">
+      <option value="">All departments</option>
+      {% for option in departments %}
+        <option value="{{ option }}" {% if department == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-sm" type="submit">Filter</button>
+    {% if search or department %}
+      <a class="btn btn-sm btn-ghost" href="{{ url_for('courses.catalog') }}">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+{% if courses %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Course</th><th class="hide-sm">Department</th><th>Period</th>
+        <th class="hide-sm">Meets</th><th class="hide-sm">Teacher</th>
+        <th class="num hide-sm">Credits</th><th class="num">Seats</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for course in courses %}
+      <tr>
+        <td>
+          <a href="{{ url_for('courses.detail', course_id=course.id) }}"><b>{{ course.name }}</b></a><br>
+          <small class="muted mono">{{ course.code }}</small>
+          {% if course.prerequisite %}
+            <small class="muted"> · prereq: {{ course.prerequisite }}</small>
+          {% endif %}
+          {% if not course.selectable %}
+            <span class="badge badge-warn" style="margin-left:6px">By placement</span>
+          {% endif %}
+        </td>
+        <td class="hide-sm">{{ course.department }}</td>
+        <td>
+          {{ course.period.label if course.period else '—' }}
+          {% if course.period %}<br><small class="muted">{{ course.period.time_range }}</small>{% endif %}
+        </td>
+        <td class="hide-sm"><span class="badge">{{ course.days_label }}</span></td>
+        <td class="hide-sm">{{ course.teacher.full_name if course.teacher else '—' }}</td>
+        <td class="num hide-sm">{{ course.credits }}</td>
+        <td class="num" style="min-width:120px">
+          {{ course.seats_taken }}/{{ course.capacity }}
+          <div class="meter {{ 'meter-bad' if course.fill_percent >= 100 else ('meter-warn' if course.fill_percent >= 85 else 'meter-ok') }}">
+            <span style="width:{{ course.fill_percent }}%"></span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty">
+    <strong>No courses match</strong>
+    Try a different search or clear the filters.
+  </div>
+</div>
+{% endif %}
+{% endblock %}

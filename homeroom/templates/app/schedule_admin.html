@@ -1,0 +1,145 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'schedule' %}
+{% block title %}School schedule — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>School schedule</h1>
+    <div class="sub">
+      Week of {{ monday.strftime('%B %d, %Y').replace(' 0', ' ') }}
+      {% if term %} · {{ term.name }}, {{ term.school_year }}{% endif %}
+      {% if school %} · {{ school.rotation_label }}{% endif %}
+    </div>
+  </div>
+  <div class="row no-print">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('main.schedule', week=prev_week.isoformat()) }}">← Prev</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('main.schedule') }}">This week</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('main.schedule', week=next_week.isoformat()) }}">Next →</a>
+    <a class="btn btn-sm" href="{{ url_for('main.responsive_schedule') }}">Today view</a>
+  </div>
+</div>
+
+<p class="muted" style="margin-top:-8px; margin-bottom:16px; font-size:.9rem">
+  Administrators don't hold a personal timetable, so this shows what the whole school is
+  doing each period — how many sections meet and how many students are in class.
+</p>
+
+<div class="card" style="overflow-x:auto">
+  <table class="sched-grid">
+    <thead>
+      <tr>
+        <th style="width:118px"></th>
+        {% for day in days %}
+        <th class="day {{ 'is-today' if day == today }}">
+          <b>{{ day.strftime('%a') }}</b>
+          <span>{{ day.strftime('%b %d').replace(' 0', ' ') }}</span>
+          {% if layouts[loop.index0] %}
+            <span class="cal-type" style="margin-top:3px; display:inline-block">
+              {{ layouts[loop.index0] }}</span>
+          {% elif week[loop.index0].day_type and school and school.uses_rotation %}
+            <span class="cal-type {{ week[loop.index0].day_type|lower }}"
+                  style="margin-top:3px; display:inline-block">
+              {{ school.day_label(week[loop.index0].day_type) }}</span>
+          {% endif %}
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for slot in slots %}
+      <tr>
+        <td>
+          <div class="period-label">
+            <b>{{ slot.label }}</b>
+            <span>{{ slot.time_range }}</span>
+            {% if slot.is_support %}<span class="badge badge-accent">Flex</span>{% endif %}
+          </div>
+        </td>
+        {% for day_view in week %}
+          {% set row = by_day[loop.index0].get(slot.id) %}
+          <td>
+            {% if not row %}
+              <div class="sched-cell empty-cell" title="Doesn't run this day"></div>
+            {% elif row.section_count or row.support_sessions %}
+              <div class="sched-cell {{ 'is-today' if day_view.date == today }}">
+                {% if slot.is_support %}
+                  <b>{{ row.support_sessions|length }} session{{ '' if row.support_sessions|length == 1 else 's' }}</b>
+                  <div class="meta">{{ row.support_seats }} signed up</div>
+                {% else %}
+                  <b>{{ row.section_count }} section{{ '' if row.section_count == 1 else 's' }}</b>
+                  <div class="meta">{{ row.students_in_class }} students</div>
+                {% endif %}
+                <div class="meta">{{ row.time_range }}</div>
+              </div>
+            {% else %}
+              <div class="sched-cell empty-cell" style="display:grid; place-items:center">
+                <span class="muted" style="font-size:.72rem">{{ row.time_range }}</span>
+              </div>
+            {% endif %}
+          </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="grid grid-sidebar" style="margin-top:18px">
+  <div class="card">
+    <div class="card-head"><h3>Today, period by period</h3></div>
+    {# A {% set %} inside a for-loop doesn't escape it in Jinja, so filter instead. #}
+    {% set today_view = week | selectattr('date', 'equalto', today) | list | first %}
+    {% if today_view %}
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th>Period</th><th>Time</th><th class="num">Sections</th>
+                <th class="num">Students</th><th>Rooms in use</th></tr>
+          </thead>
+          <tbody>
+            {% for row in today_view.rows %}
+            <tr class="{{ 'muted' if row.state == 'past' }}">
+              <td>
+                <b>{{ row.period.label }}</b>
+                {% if row.state == 'current' %}<span class="badge badge-brand">Now</span>{% endif %}
+              </td>
+              <td class="mono muted">{{ row.time_range }}</td>
+              <td class="num">
+                {% if row.period.is_support %}{{ row.support_sessions|length }}
+                {% else %}{{ row.section_count }}{% endif %}
+              </td>
+              <td class="num">
+                {% if row.period.is_support %}{{ row.support_seats }}
+                {% else %}{{ row.students_in_class }}{% endif %}
+              </td>
+              <td class="muted" style="font-size:.82rem">
+                {% set rooms = row.sections | map(attribute='room') | select | list %}
+                {{ rooms | join(', ') if rooms else '—' }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">This week doesn't include today.</div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card card-tint">
+      <h3>Timetable shape</h3>
+      <dl class="kv" style="grid-template-columns:110px 1fr">
+        <dt>Model</dt><dd>{{ school.rotation_label if school else '—' }}</dd>
+        <dt>Slots</dt><dd>{{ slots|length }}</dd>
+        <dt>{{ support_label }} blocks</dt>
+        <dd>{{ slots | selectattr('is_support') | list | length }}</dd>
+      </dl>
+      <hr class="divider">
+      <a class="btn btn-ghost btn-block" href="{{ url_for('admin.bell_schedule') }}">
+        Bell schedule &amp; rotation</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

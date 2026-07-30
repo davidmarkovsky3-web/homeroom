@@ -1,0 +1,86 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'more' %}
+{% set active_sub = 'index' %}
+{% block title %}More — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>More</h1>
+    <div class="sub">Reference and office screens</div>
+  </div>
+</div>
+
+<div class="grid grid-3">
+  <a class="card" href="{{ url_for('notices.index') }}" style="color:inherit">
+    <h3>🔔 Notification Center</h3>
+    <p class="muted" style="font-size:.92rem; margin:0">
+      Announcements, study reminders for upcoming tests, missing work and absence decisions.
+      {% if notice_count %}<br><span class="badge badge-bad">{{ notice_count }} need attention</span>{% endif %}
+    </p>
+  </a>
+
+  <a class="card" href="{{ url_for('more.important_dates') }}" style="color:inherit">
+    <h3>📌 Important dates</h3>
+    <p class="muted" style="font-size:.92rem; margin:0">
+      Exams, deadlines, holidays and no-school days at a glance.
+    </p>
+  </a>
+
+  <a class="card" href="{{ url_for('more.assessments') }}" style="color:inherit">
+    <h3>📊 Assessments</h3>
+    <p class="muted" style="font-size:.92rem; margin:0">
+      Standardized tests, when they were given, and how results compare.
+    </p>
+  </a>
+
+  <a class="card" href="{{ url_for('more.contacts') }}" style="color:inherit">
+    <h3>📇 Contact list</h3>
+    <p class="muted" style="font-size:.92rem; margin:0">
+      Who to email about what — teachers and the front office.
+    </p>
+  </a>
+
+  <a class="card" href="{{ url_for('more.absences') }}" style="color:inherit">
+    <h3>✉️ Absences</h3>
+    <p class="muted" style="font-size:.92rem; margin:0">
+      {% if current_user.is_student or current_user.is_parent %}
+        Report an absence that happened, or request one you're planning.
+      {% else %}
+        Excuse reported absences and approve planned ones.
+        {% if pending_absences %}<br><span class="badge badge-warn">{{ pending_absences }} waiting</span>{% endif %}
+      {% endif %}
+    </p>
+  </a>
+
+  <a class="card" href="{{ url_for('more.health') }}" style="color:inherit">
+    <h3>🩺 Health</h3>
+    <p class="muted" style="font-size:.92rem; margin:0">
+      Allergies, medications and action plans held by the nurse's office.
+    </p>
+  </a>
+
+  {% if current_user.is_admin or current_user.is_district_admin or current_user.is_homeroom_staff %}
+  <a class="card" href="{{ url_for('more.demographics') }}" style="color:inherit">
+    <h3>👥 Student demographics</h3>
+    <p class="muted" style="font-size:.92rem; margin:0">
+      Grade distribution, home language, IEP and 504 flags, counselor assignment.
+    </p>
+  </a>
+
+  <a class="card" href="{{ url_for('notices.announcements') }}" style="color:inherit">
+    <h3>📢 Announcements</h3>
+    <p class="muted" style="font-size:.92rem; margin:0">
+      Post to students, families or staff — with an action button and a due date.
+    </p>
+  </a>
+
+  <a class="card" href="{{ url_for('importer.index') }}" style="color:inherit">
+    <h3>📥 Bulk import</h3>
+    <p class="muted" style="font-size:.92rem; margin:0">
+      Load students, staff, courses and enrollments from a CSV or text file.
+    </p>
+  </a>
+  {% endif %}
+</div>
+{% endblock %}

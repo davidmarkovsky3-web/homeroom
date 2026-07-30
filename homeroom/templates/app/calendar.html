@@ -1,0 +1,136 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'calendar' %}
+{% block title %}Calendar — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ anchor.strftime('%B %Y') }}</h1>
+    <div class="sub">School calendar, rotation days and course events</div>
+  </div>
+  <div class="row no-print">
+    <a class="btn btn-ghost btn-sm"
+       href="{{ url_for('calendar.index', year=prev_month.year, month=prev_month.month) }}">← {{ prev_month.strftime('%b') }}</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('calendar.index') }}">This month</a>
+    <a class="btn btn-ghost btn-sm"
+       href="{{ url_for('calendar.index', year=next_month.year, month=next_month.month) }}">{{ next_month.strftime('%b') }} →</a>
+    {% if can_manage %}
+      <a class="btn btn-sm" href="{{ url_for('calendar.new_event') }}">Add event</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="cal">
+  {% for label in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] %}
+    <div class="cal-head">{{ label }}</div>
+  {% endfor %}
+
+  {% for week in weeks %}
+    {% for day in week %}
+      {% set school_day = day_types.get(day) %}
+      {% set day_events = events_by_day.get(day, []) %}
+      <div class="cal-day
+                  {{ 'other' if day.month != anchor.month }}
+                  {{ 'today' if day == today }}
+                  {{ 'closed' if school_day and not school_day.in_session }}">
+        <div class="cal-date">
+          <a href="{{ url_for('calendar.day_detail', day=day.isoformat()) }}">{{ day.day }}</a>
+          {% if school_day and school_day.in_session %}
+            {% if school and school.uses_rotation %}
+              <span class="cal-type {{ school_day.day_type|lower }}">{{ school_day.day_type }}</span>
+            {% endif %}
+          {% elif school_day %}
+            <span class="cal-type">Closed</span>
+          {% endif %}
+        </div>
+        {% for event in day_events[:3] %}
+          <a class="cal-event ev-{{ event.category }}"
+             href="{{ url_for('calendar.day_detail', day=day.isoformat()) }}"
+             title="{{ event.title }}">{{ event.title }}</a>
+        {% endfor %}
+        {% if day_events|length > 3 %}
+          <a class="cal-event" href="{{ url_for('calendar.day_detail', day=day.isoformat()) }}">
+            +{{ day_events|length - 3 }} more</a>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% endfor %}
+</div>
+
+<div class="grid grid-sidebar" style="margin-top:18px">
+  <div class="card">
+    <div class="card-head"><h3>This month's events</h3></div>
+    {% set month_events = [] %}
+    {% for day, day_events in events_by_day|dictsort %}
+      {% if day.month == anchor.month %}
+        {% for event in day_events %}{% set _ = month_events.append((day, event)) %}{% endfor %}
+      {% endif %}
+    {% endfor %}
+    {% if month_events %}
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead><tr><th>Date</th><th>Event</th><th class="hide-sm">Time</th><th>Type</th></tr></thead>
+          <tbody>
+            {% for day, event in month_events %}
+            <tr>
+              <td class="tight">
+                <a href="{{ url_for('calendar.day_detail', day=day.isoformat()) }}">
+                  {{ day.strftime('%a %b %d').replace(' 0', ' ') }}</a>
+              </td>
+              <td>
+                <b>{{ event.title }}</b>
+                {% if event.course %}<br><small class="muted mono">{{ event.course.code }}</small>{% endif %}
+                {% if event.grade_level %}<br><small class="muted">Grade {{ event.grade_level }}</small>{% endif %}
+              </td>
+              <td class="hide-sm muted">{{ event.time_label }}</td>
+              <td><span class="badge ev-{{ event.category }}" style="text-transform:capitalize">{{ event.category }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty"><strong>Nothing scheduled</strong>No events this month.</div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card card-tint">
+      <h3>Legend</h3>
+      <div class="legend" style="margin-top:10px; flex-direction:column; gap:7px">
+        <span><i style="background:var(--bad)"></i>Exam</span>
+        <span><i style="background:var(--warn)"></i>Holiday / no school</span>
+        <span><i style="background:var(--info)"></i>Assembly</span>
+        <span><i style="background:var(--brand)"></i>Deadline</span>
+        <span><i style="background:var(--accent)"></i>Sports</span>
+        <span><i style="background:var(--ink-3)"></i>Activity</span>
+      </div>
+      {% if school %}
+      <hr class="divider">
+      <div class="legend" style="flex-direction:column; gap:7px">
+        {% if school.uses_rotation %}
+          {% for token in school.rotation_tokens %}
+            <span><span class="cal-type {{ token|lower }}">{{ token }}</span>
+              {{ school.token_label(token) }}</span>
+          {% endfor %}
+        {% else %}
+          <span class="muted">{{ school.rotation_label }} — no day types to show.</span>
+        {% endif %}
+        <span><span class="cal-type">Closed</span> No school</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if can_manage and current_user.is_admin %}
+    <div class="card card-tint">
+      <h3>Set school days</h3>
+      <p class="muted" style="font-size:.88rem">
+        Assign day types, mark dates closed, or generate a whole term at once from the bell
+        schedule screen.
+      </p>
+      <a class="btn btn-ghost btn-block" href="{{ url_for('admin.bell_schedule') }}">Bell schedule &amp; timetable</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "base_public.html" %}
+{% block title %}Request a demo — Homeroom{% endblock %}
+
+{% block body %}
+<section class="section">
+  <div class="wrap grid grid-sidebar">
+    <div class="card">
+      <h1 style="font-size:1.7rem">Request a demo</h1>
+      <p class="muted">Tell us about your school and we'll set up a 30-minute walkthrough with a
+         demo tenant loaded with sample data that resembles yours.</p>
+
+      <form method="post" novalidate>
+        <div class="grid grid-2" style="gap:0 16px">
+          <div class="field">
+            <label for="name">Your name *</label>
+            <input id="name" name="name" type="text" required value="{{ form.get('name', '') }}">
+          </div>
+          <div class="field">
+            <label for="job_title">Job title</label>
+            <input id="job_title" name="job_title" type="text"
+                   placeholder="Principal, Director of Technology…"
+                   value="{{ form.get('job_title', '') }}">
+          </div>
+          <div class="field">
+            <label for="email">Work email *</label>
+            <input id="email" name="email" type="email" required value="{{ form.get('email', '') }}">
+          </div>
+          <div class="field">
+            <label for="phone">Phone</label>
+            <input id="phone" name="phone" type="tel" value="{{ form.get('phone', '') }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="organization">School or district *</label>
+          <input id="organization" name="organization" type="text" required
+                 value="{{ form.get('organization', '') }}">
+        </div>
+
+        <div class="grid grid-2" style="gap:0 16px">
+          <div class="field">
+            <label for="student_count">Enrolled students</label>
+            <select id="student_count" name="student_count">
+              {% for option in ['Under 500', '500–1,000', '1,000–5,000', '5,000–10,000', '10,000+'] %}
+                <option {% if form.get('student_count') == option %}selected{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="preferred_date">Preferred date</label>
+            <input id="preferred_date" name="preferred_date" type="date"
+                   value="{{ form.get('preferred_date', '') }}">
+          </div>
+        </div>
+
+        <fieldset>
+          <legend>What should we focus on?</legend>
+          {% set chosen = form.getlist('interests') if form.getlist is defined else [] %}
+          {% for value, label in [
+              ('scheduling', 'Scheduling and bell periods'),
+              ('attendance', 'Attendance and reporting'),
+              ('selection', 'Course selection (1st / 2nd picks)'),
+              ('calendar', 'School calendar and rotation days'),
+              ('accounts', 'Account provisioning and roles'),
+              ('migration', 'Migrating off our current SIS')] %}
+          <div class="check">
+            <input type="checkbox" id="i-{{ value }}" name="interests" value="{{ label }}"
+                   {% if label in chosen %}checked{% endif %}>
+            <label for="i-{{ value }}">{{ label }}</label>
+          </div>
+          {% endfor %}
+        </fieldset>
+
+        <div class="field">
+          <label for="message">Anything else?</label>
+          <textarea id="message" name="message"
+                    placeholder="Current SIS, timeline, constraints…">{{ form.get('message', '') }}</textarea>
+        </div>
+
+        <button class="btn btn-lg btn-block" type="submit">Request demo</button>
+        <p class="field-hint center" style="margin-top:12px">
+          We reply within one business day. No sales sequence, no auto-dialer.
+        </p>
+      </form>
+    </div>
+
+    <div class="stack">
+      <div class="card card-tint">
+        <h3>What a demo looks like</h3>
+        <ol class="muted" style="padding-left:20px; margin:0; font-size:.92rem">
+          <li style="margin-bottom:8px">You send your bell schedule and a course list (optional).</li>
+          <li style="margin-bottom:8px">We load it into a private demo tenant.</li>
+          <li style="margin-bottom:8px">30 minutes on a call: student view, teacher view, admin view.</li>
+          <li>You keep the tenant for 14 days to poke at it yourself.</li>
+        </ol>
+      </div>
+      <div class="card card-tint">
+        <h3>Already know what you need?</h3>
+        <p class="muted" style="font-size:.92rem">Skip the call and go straight to a written quote
+           with seat counts and a PO reference.</p>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('public.purchase') }}">Request a quote</a>
+      </div>
+      <div class="card card-tint">
+        <h3>Want to look around first?</h3>
+        <p class="muted" style="font-size:.92rem">The signed-in app has demo accounts for all three
+           roles. Credentials are listed on the sign-in page.</p>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('auth.login') }}">Open the app</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

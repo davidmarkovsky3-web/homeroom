@@ -1,0 +1,105 @@
+{% extends "base_public.html" %}
+{% block title %}Pricing — Homeroom{% endblock %}
+
+{% block body %}
+<section class="hero" style="padding-bottom:40px">
+  <div class="wrap center">
+    <span class="eyebrow">Pricing</span>
+    <h1>Per student, per year</h1>
+    <p class="lead">Staff accounts are unlimited on every plan. Annual billing by purchase order,
+       ACH or card. Multi-year terms get a discount applied at quote time.</p>
+  </div>
+</section>
+
+<section class="wrap" style="padding-bottom:64px">
+  <div class="grid grid-3">
+    {% for key, plan in plans.items() %}
+    <div class="price-card {% if plan.popular %}featured{% endif %}">
+      {% if plan.popular %}<span class="badge badge-brand" style="align-self:flex-start; margin-bottom:10px">Most popular</span>{% endif %}
+      <h3>{{ plan.name }}</h3>
+      <p class="muted" style="font-size:.9rem">{{ plan.blurb }}</p>
+      <div class="amount">${{ '%.2f'|format(plan.price_per_student) }}</div>
+      <div class="muted" style="font-size:.85rem">per student, per year</div>
+      <ul>{% for feature in plan.features %}<li>{{ feature }}</li>{% endfor %}</ul>
+      <a class="btn {% if not plan.popular %}btn-ghost{% endif %} btn-block"
+         href="{{ url_for('public.purchase', plan=key) }}">Request a quote</a>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="section section-tint">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>What's included where</h2>
+      <p>Every plan runs the same core modules. The differences are workflow depth and integrations.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Capability</th><th class="center">Core</th><th class="center">Campus</th><th class="center">District</th></tr>
+        </thead>
+        <tbody>
+          {% set rows = [
+            ('Student, teacher and admin portals', true, true, true),
+            ('Home dashboard', true, true, true),
+            ('School calendar with A/B rotation', true, true, true),
+            ('Week schedule grid', true, true, true),
+            ('Responsive single-day schedule', true, true, true),
+            ('Period attendance (present / absent / tardy / excused)', true, true, true),
+            ('Course selection with 1st and 2nd picks', false, true, true),
+            ('Counselor request approval workflow', false, true, true),
+            ('Attendance analytics and chronic-absence flags', false, true, true),
+            ('Roster import from CSV', false, true, true),
+            ('Multi-school district tenant', false, false, true),
+            ('SAML / OAuth single sign-on', false, false, true),
+            ('API access and nightly exports', false, false, true),
+            ('99.9% uptime SLA', false, false, true),
+          ] %}
+          {% for label, core, campus, district in rows %}
+          <tr>
+            <td>{{ label }}</td>
+            <td class="center">{% if core %}<span style="color:var(--ok); font-weight:700">✓</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="center">{% if campus %}<span style="color:var(--ok); font-weight:700">✓</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="center">{% if district %}<span style="color:var(--ok); font-weight:700">✓</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap-narrow">
+    <h2 class="center" style="margin-bottom:32px">Questions we get asked</h2>
+    <div class="stack">
+      <div class="card">
+        <h3>How is the student count determined?</h3>
+        <p class="muted" style="margin:0">By your official enrollment on the first day of the
+           contract term. If you grow mid-year, we true up at renewal rather than invoicing again.</p>
+      </div>
+      <div class="card">
+        <h3>Do you charge for teacher or staff accounts?</h3>
+        <p class="muted" style="margin:0">No. Teacher and administrator accounts are unlimited
+           on every plan, including Core.</p>
+      </div>
+      <div class="card">
+        <h3>Can we pay by purchase order?</h3>
+        <p class="muted" style="margin:0">Yes — that's the default on the quote request form.
+           We also accept ACH and card for smaller schools.</p>
+      </div>
+      <div class="card">
+        <h3>What does implementation involve?</h3>
+        <p class="muted" style="margin:0">A bell schedule, a course catalog and a roster export.
+           Most single schools are live in two weeks; districts on the District plan get a
+           dedicated implementation manager and a phased rollout.</p>
+      </div>
+    </div>
+    <div class="center" style="margin-top:36px">
+      <a class="btn btn-lg" href="{{ url_for('public.purchase') }}">Request a quote</a>
+      <a class="btn btn-lg btn-ghost" href="{{ url_for('public.demo') }}">Or book a demo first</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

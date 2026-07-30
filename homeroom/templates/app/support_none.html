@@ -1,0 +1,21 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'support' %}
+{% block title %}{{ support_label }} — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ support_label }}</h1>
+    <div class="sub">Flex block sign-ups</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="empty">
+    <strong>No {{ support_label|lower }} block at this school</strong>
+    Your school's bell schedule doesn't include a {{ support_label|lower }} period yet. An administrator can
+    mark one from the bell schedule screen, and teachers can then publish what they're
+    offering each day.
+  </div>
+</div>
+{% endblock %}

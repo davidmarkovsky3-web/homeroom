@@ -1,0 +1,223 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'selection' %}
+{% block title %}{{ course.code }} — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ course.name }}</h1>
+    <div class="sub">
+      <span class="mono">{{ course.code }}</span> · {{ course.department }} ·
+      {{ course.credits }} credit{{ '' if course.credits == 1 else 's' }}
+      {% if enrolled %}<span class="badge badge-ok" style="margin-left:6px">Enrolled</span>{% endif %}
+    </div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('courses.catalog') }}">← Catalog</a>
+</div>
+
+{% if is_class_teacher or manages %}
+<div class="quick-links" style="margin-bottom:18px">
+  <a class="quick-link" href="{{ url_for('grades.gradebook', course=course.id) }}">
+    <span class="qi">📊</span> Gradebook</a>
+  <a class="quick-link" href="{{ url_for('assignments.teacher_index', course=course.id) }}">
+    <span class="qi">📝</span> Assignments</a>
+  <a class="quick-link" href="{{ url_for('notices.class_announcements', course_id=course.id) }}">
+    <span class="qi">📣</span> Announcements</a>
+  {% if is_class_teacher %}
+    <a class="quick-link" href="{{ url_for('attendance.take', course=course.id) }}">
+      <span class="qi">📅</span> Attendance</a>
+  {% endif %}
+  {% if manages %}
+    <a class="quick-link" href="{{ url_for('admin.course_roster', course_id=course.id) }}">
+      <span class="qi">👥</span> Manage roster</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="grid grid-sidebar">
+  <div class="stack">
+    {% if announcements %}
+    <div class="card">
+      <div class="card-head">
+        <h3>Class announcements</h3>
+        {% if is_class_teacher or manages %}
+          <a class="btn btn-ghost btn-sm"
+             href="{{ url_for('notices.class_announcements', course_id=course.id) }}">Post</a>
+        {% endif %}
+      </div>
+      <div class="stack">
+        {% for item in announcements %}
+        <div class="notice {{ 'urgent' if item.urgent }}" style="margin:0">
+          <div class="notice-icon">{{ '❗' if item.urgent else '📣' }}</div>
+          <div class="notice-body">
+            <b>{{ item.title }}</b>
+            {% if item.body %}<p>{{ item.body }}</p>{% endif %}
+            <div class="notice-meta">
+              {{ item.starts_on|pretty_date }}
+              {% if item.due_on %} · <b>due {{ item.due_on|pretty_date }}</b>{% endif %}
+              {% if item.created_by %} · {{ item.created_by.full_name }}{% endif %}
+            </div>
+          </div>
+          {% if item.action_url %}
+            <a class="btn btn-sm btn-soft" href="{{ item.action_url }}">
+              {{ item.action_label or 'Open' }}</a>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% elif is_class_teacher %}
+    <div class="card card-tint">
+      <div class="card-head"><h3>Class announcements</h3></div>
+      <p class="muted" style="font-size:.9rem">
+        Nothing posted to this class yet. Anything you post reaches these
+        {{ course.seats_taken }} students and their guardians — nobody else.
+      </p>
+      <a class="btn btn-ghost btn-block"
+         href="{{ url_for('notices.class_announcements', course_id=course.id) }}">
+        Post an announcement</a>
+    </div>
+    {% endif %}
+
+    {% if assignments %}
+    <div class="card">
+      <div class="card-head">
+        <h3>Assignments</h3>
+        {% if is_class_teacher or manages %}
+          <a class="btn btn-ghost btn-sm"
+             href="{{ url_for('assignments.teacher_index', course=course.id) }}">All</a>
+        {% endif %}
+      </div>
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead><tr><th>Assignment</th><th>Due</th><th class="num">Points</th>
+                     {% if is_class_teacher or manages %}<th>Visible</th>{% endif %}</tr></thead>
+          <tbody>
+            {% for item in assignments %}
+            <tr>
+              <td><b>{{ item.title }}</b>
+                {% if item.category %}<br><small class="muted">{{ item.category.name }}</small>{% endif %}</td>
+              <td>{{ item.due_on|pretty_date if item.due_on else '—' }}</td>
+              <td class="num">{{ '%g'|format(item.points_possible) }}</td>
+              {% if is_class_teacher or manages %}
+              <td><span class="badge badge-{{ 'ok' if item.published else 'warn' }}">
+                {{ 'Published' if item.published else 'Hidden' }}</span></td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <h3>About this course</h3>
+      <p>{{ course.description or 'No description has been published for this section.' }}</p>
+      {% if course.prerequisite %}
+        <p class="muted" style="margin:0"><b>Prerequisite:</b> {{ course.prerequisite }}</p>
+      {% endif %}
+    </div>
+
+    {% if roster is not none %}
+    <div class="card">
+      <div class="card-head">
+        <h3>Roster</h3>
+        <span class="badge">{{ roster|length }} students</span>
+      </div>
+      {% if roster %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead><tr><th>Student</th><th class="hide-sm">ID</th><th>Grade</th>{% if uses_homeroom %}<th class="hide-sm">{{ homeroom_label }}</th>{% endif %}<th class="tight"></th></tr></thead>
+            <tbody>
+              {% for student in roster %}
+              <tr>
+                <td><b>{{ student.display_name }}</b></td>
+                <td class="hide-sm mono muted">{{ student.student_number or '—' }}</td>
+                <td>{{ student.grade_level or '—' }}</td>
+                {% if uses_homeroom %}<td class="hide-sm">{{ student.homeroom or '—' }}</td>{% endif %}
+                <td class="tight">
+                  <a class="btn btn-sm btn-ghost"
+                     href="{{ url_for('attendance.student_detail', student_id=student.id) }}">Attendance</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">Nobody is enrolled in this section yet.</div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <h3>Section details</h3>
+      <dl class="kv" style="grid-template-columns:110px 1fr">
+        <dt>Code</dt><dd class="mono">{{ course.code }}</dd>
+        <dt>Teacher</dt><dd>{{ course.teacher.full_name if course.teacher else 'Staff TBD' }}</dd>
+        <dt>Period</dt>
+        <dd>
+          {{ course.period.label if course.period else 'Unscheduled' }}
+          {% if course.period %}<br><small class="muted">{{ course.period.time_range }}</small>{% endif %}
+        </dd>
+        <dt>Meets</dt><dd><span class="badge">{{ course.days_label }}</span></dd>
+        <dt>Room</dt><dd>{{ course.room or '—' }}</dd>
+        <dt>Term</dt><dd>{{ course.term.name if course.term else '—' }}</dd>
+        <dt>Credits</dt><dd>{{ course.credits }}</dd>
+      </dl>
+    </div>
+
+    <div class="card {{ 'card-tint' if not course.is_full }}">
+      <div class="card-head">
+        <h3>Seats</h3>
+        <span class="badge {{ 'badge-bad' if course.is_full else 'badge-ok' }}">
+          {{ 'Full' if course.is_full else '%d open'|format(course.seats_open) }}</span>
+      </div>
+      <div class="stat-value">{{ course.seats_taken }}<span class="muted" style="font-size:1.1rem">/{{ course.capacity }}</span></div>
+      <div class="meter {{ 'meter-bad' if course.fill_percent >= 100 else ('meter-warn' if course.fill_percent >= 85 else 'meter-ok') }}">
+        <span style="width:{{ course.fill_percent }}%"></span>
+      </div>
+      {% if current_user.is_student and not enrolled %}
+        <p class="field-hint" style="margin-top:12px">
+          {% if course.selectable %}
+            You can request this course during course selection.
+          {% else %}
+            This section is assigned by placement, not by request.
+          {% endif %}
+        </p>
+        {% if course.selectable %}
+          <a class="btn btn-ghost btn-block" style="margin-top:10px"
+             href="{{ url_for('courses.selection') }}">Go to course selection</a>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    {% if average is not none %}
+    <div class="card card-tint">
+      <div class="stat-label">Class average</div>
+      <div class="grade-lg" style="color:{{ average|grade_color }}">{{ average|pct }}</div>
+      <div class="meter" style="margin-top:8px">
+        <span style="width:{{ [average, 100]|min }}%; background:{{ average|grade_color }}"></span>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if is_class_teacher %}
+    <div class="card card-tint">
+      <h3>Teacher actions</h3>
+      <div class="stack" style="margin-top:10px">
+        <a class="btn btn-ghost btn-block" href="{{ url_for('attendance.take', course=course.id) }}">Take attendance</a>
+        <a class="btn btn-ghost btn-block"
+           href="{{ url_for('assignments.new_assignment', course=course.id) }}">New assignment</a>
+        <a class="btn btn-ghost btn-block"
+           href="{{ url_for('notices.class_announcements', course_id=course.id) }}">Announce to this class</a>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('calendar.new_event') }}">Add a course event</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

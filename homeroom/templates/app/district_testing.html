@@ -1,0 +1,71 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'testing' %}
+{% block title %}District testing — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Testing across the district</h1>
+    <div class="sub">{{ district.name }} · {{ schools|length }} schools compared to the state</div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('district.index') }}">← District</a>
+</div>
+
+{% if table %}
+<div class="card">
+  <div class="table-wrap" style="border:none">
+    <table>
+      <thead>
+        <tr>
+          <th>Assessment</th>
+          {% for school in schools %}<th class="num">{{ school.code }}</th>{% endfor %}
+          <th class="num">District</th><th class="num">State</th><th class="num">vs. state</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in table %}
+        {% set gap = (row.district_average - row.state_average)|round(1)
+                     if row.district_average is not none and row.state_average is not none else None %}
+        <tr>
+          <td>
+            <b>{{ row.assessment.name }}</b><br>
+            <small class="muted">{{ row.assessment.subject }} ·
+              {{ row.assessment.administered_on|pretty_date }}</small>
+          </td>
+          {% for cell in row.per_school %}
+            <td class="num">
+              {% if cell.average is not none %}
+                <b>{{ cell.average }}</b><br>
+                <small class="muted">n={{ cell.count }}</small>
+              {% else %}<span class="muted">—</span>{% endif %}
+            </td>
+          {% endfor %}
+          <td class="num"><b>{{ row.district_average if row.district_average is not none else '—' }}</b></td>
+          <td class="num muted">{{ row.state_average if row.state_average is not none else '—' }}</td>
+          <td class="num">
+            {% if gap is not none %}
+              <b style="color:{{ 'var(--ok)' if gap >= 0 else 'var(--bad)' }}">
+                {{ '+' if gap > 0 }}{{ gap }}</b>
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card card-tint" style="margin-top:18px">
+  <h3>Reading this table</h3>
+  <p class="muted" style="font-size:.9rem; margin:0">
+    Each school column is the mean score for students enrolled there. The district column
+    pools every student across the district; the state column is the published statewide
+    figure for that administration. Scales differ between assessments, so compare down a row
+    rather than across rows.
+  </p>
+</div>
+{% else %}
+<div class="card"><div class="empty"><strong>No assessment data</strong>
+  No standardized results have been loaded for this district.</div></div>
+{% endif %}
+{% endblock %}

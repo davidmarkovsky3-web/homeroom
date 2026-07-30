@@ -1,0 +1,180 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'admin' %}
+{% block title %}Add a user — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Add a user</h1>
+    <div class="sub">Creating an account at {{ school.name }}</div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.users') }}">← All users</a>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <form method="post">
+      <fieldset>
+        <legend>Role</legend>
+        {% set hints = {
+          'student': 'Sees their own schedule, grades, assignments, attendance and course requests.',
+          'parent': 'Sees only the students linked to them. Must be linked to at least one.',
+          'teacher': 'Takes attendance, runs a gradebook, posts assignments and flex sessions.',
+          'admin': 'Manages accounts, courses, bell schedule and school-wide reporting.'
+        } %}
+        {% for option in roles %}
+        <div class="check">
+          <input type="radio" id="role-{{ option }}" name="role" value="{{ option }}"
+                 {% if (form.get('role') or 'student') == option %}checked{% endif %}>
+          <label for="role-{{ option }}">
+            <b>{{ role_labels[option] }}</b><br>
+            <span class="muted" style="font-weight:400">{{ hints[option] }}</span>
+          </label>
+        </div>
+        {% endfor %}
+      </fieldset>
+
+      <div class="grid grid-2" style="gap:0 16px">
+        <div class="field">
+          <label for="first_name">First name *</label>
+          <input id="first_name" name="first_name" type="text" required
+                 value="{{ form.get('first_name', '') }}">
+        </div>
+        <div class="field">
+          <label for="last_name">Last name *</label>
+          <input id="last_name" name="last_name" type="text" required
+                 value="{{ form.get('last_name', '') }}">
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="gap:0 16px">
+        <div class="field">
+          <label for="email">Email *</label>
+          <input id="email" name="email" type="email" required value="{{ form.get('email', '') }}">
+        </div>
+        <div class="field">
+          <label for="phone">Phone</label>
+          <input id="phone" name="phone" type="tel" value="{{ form.get('phone', '') }}">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="new-password">
+        <div class="field-hint">Leave blank to generate a temporary password, shown once.</div>
+      </div>
+
+      <fieldset id="student-fields">
+        <legend>Student details</legend>
+        <div class="grid grid-3" style="gap:0 14px">
+          <div class="field">
+            <label for="student_number">Student ID</label>
+            <input id="student_number" name="student_number" type="text"
+                   value="{{ form.get('student_number', '') }}">
+          </div>
+          <div class="field">
+            <label for="grade_level">Grade level</label>
+            <select id="grade_level" name="grade_level">
+              <option value="">—</option>
+              {% for grade in school.grade_range %}
+                <option value="{{ grade }}"
+                        {% if form.get('grade_level')|string == grade|string %}selected{% endif %}>
+                  Grade {{ grade }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% if uses_homeroom %}
+          <div class="field">
+            <label for="homeroom">{{ homeroom_label }}</label>
+            <input id="homeroom" name="homeroom" type="text" placeholder="B-114"
+                   value="{{ form.get('homeroom', '') }}">
+          </div>
+          {% endif %}
+        </div>
+      </fieldset>
+
+      <fieldset id="parent-fields">
+        <legend>Linked students <span style="color:var(--bad)">*</span></legend>
+        <p class="field-hint" style="margin-top:0">
+          A parent account is meaningless on its own — it only ever shows the students it's
+          linked to. Pick at least one.
+        </p>
+        <div class="field">
+          <label for="relationship">Relationship</label>
+          <input id="relationship" name="relationship" type="text" placeholder="Parent"
+                 value="{{ form.get('relationship', 'Parent') }}" style="max-width:220px">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="link_student">Students</label>
+          <select id="link_student" name="link_student" multiple size="8">
+            {% for student in students %}
+              <option value="{{ student.id }}">
+                {{ student.display_name }} — grade {{ student.grade_level or '—' }}
+                {% if student.student_number %}({{ student.student_number }}){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+          <div class="field-hint">Ctrl/Cmd-click to select more than one.</div>
+        </div>
+      </fieldset>
+
+      <fieldset id="staff-fields">
+        <legend>Staff details</legend>
+        <div class="grid grid-2" style="gap:0 14px">
+          <div class="field" style="margin-bottom:0">
+            <label for="department">Department</label>
+            <input id="department" name="department" type="text" placeholder="Mathematics"
+                   value="{{ form.get('department', '') }}">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label for="title">Title</label>
+            <input id="title" name="title" type="text" placeholder="Teacher"
+                   value="{{ form.get('title', '') }}">
+          </div>
+        </div>
+      </fieldset>
+
+      <button class="btn" type="submit">Create account</button>
+      <a class="btn btn-ghost" href="{{ url_for('admin.users') }}">Cancel</a>
+    </form>
+  </div>
+
+  <div class="card card-tint">
+    <h3>What each role can do</h3>
+    <dl class="kv" style="grid-template-columns:1fr; gap:2px; font-size:.9rem">
+      <dt>Student</dt>
+      <dd class="muted" style="margin-bottom:12px">Home, calendar, schedule, today view,
+        grades, assignments, {{ support_label|lower }} sign-up, attendance and course requests.</dd>
+      <dt>Parent / Guardian</dt>
+      <dd class="muted" style="margin-bottom:12px">Only the linked students' grades,
+        attendance, assignments and schedule — nothing school-wide.</dd>
+      <dt>Teacher</dt>
+      <dd class="muted" style="margin-bottom:12px">Their own sections: attendance, gradebook,
+        assignments, {{ support_label|lower }} sessions and course-scoped calendar events.</dd>
+      <dt>School Administrator</dt>
+      <dd class="muted">Everything at this school, plus accounts, courses, bell schedule and
+        reporting. No access to Homeroom's sales console.</dd>
+    </dl>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var sections = {
+      student: document.getElementById('student-fields'),
+      parent: document.getElementById('parent-fields'),
+      staff: document.getElementById('staff-fields')
+    };
+    function sync() {
+      var role = document.querySelector('input[name=role]:checked').value;
+      sections.student.style.display = role === 'student' ? '' : 'none';
+      sections.parent.style.display = role === 'parent' ? '' : 'none';
+      sections.staff.style.display = (role === 'teacher' || role === 'admin') ? '' : 'none';
+    }
+    document.querySelectorAll('input[name=role]').forEach(function (radio) {
+      radio.addEventListener('change', sync);
+    });
+    sync();
+  })();
+</script>
+{% endblock %}

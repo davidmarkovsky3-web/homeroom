@@ -1,0 +1,103 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'admin' %}
+{% block title %}Administration — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Administration</h1>
+    <div class="sub">{{ school.name }} — accounts, courses and schedules</div>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:22px">
+  <div class="stat"><div class="stat-label">Students</div>
+    <div class="stat-value">{{ '{:,}'.format(counts.students) }}</div></div>
+  <div class="stat"><div class="stat-label">Teachers</div>
+    <div class="stat-value">{{ counts.teachers }}</div>
+    <div class="stat-note">{{ counts.admins }} administrators</div></div>
+  <div class="stat"><div class="stat-label">Parent accounts</div>
+    <div class="stat-value">{{ counts.parents }}</div></div>
+  <div class="stat"><div class="stat-label">Courses</div>
+    <div class="stat-value">{{ counts.courses }}</div>
+    <div class="stat-note">{{ '{:,}'.format(counts.enrollments) }} enrollments</div></div>
+</div>
+
+<div class="grid grid-3">
+  <div class="card">
+    <h3>👥 Accounts</h3>
+    <p class="muted" style="font-size:.92rem">Create student, parent, teacher and administrator
+       accounts, link guardians to students, reset passwords and manage enrollment.</p>
+    <div class="stack">
+      <a class="btn btn-block" href="{{ url_for('admin.users') }}">All users</a>
+      <a class="btn btn-ghost btn-block" href="{{ url_for('admin.new_user') }}">Add a user</a>
+      <div class="row" style="gap:6px">
+        <a class="btn btn-sm btn-ghost" href="{{ url_for('admin.users', role='student') }}">Students</a>
+        <a class="btn btn-sm btn-ghost" href="{{ url_for('admin.users', role='parent') }}">Parents</a>
+        <a class="btn btn-sm btn-ghost" href="{{ url_for('admin.users', role='teacher') }}">Teachers</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📚 Courses &amp; sections</h3>
+    <p class="muted" style="font-size:.92rem">Add and remove sections, assign teachers, periods
+       and rooms, set capacity, and control which courses students may request.</p>
+    <div class="stack">
+      <a class="btn btn-block" href="{{ url_for('admin.courses') }}">Manage courses</a>
+      <a class="btn btn-ghost btn-block" href="{{ url_for('courses.catalog') }}">View catalog</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🔔 Bell schedule &amp; timetable</h3>
+    <p class="muted" style="font-size:.92rem">Define bell periods, mark a {{ support_label|lower }} block, choose
+       how your week repeats, and generate the school calendar.</p>
+    <div class="stack">
+      <a class="btn btn-block" href="{{ url_for('admin.bell_schedule') }}">Bell schedule</a>
+      <a class="btn btn-ghost btn-block" href="{{ url_for('calendar.index') }}">School calendar</a>
+    </div>
+    <p class="field-hint" style="margin-top:10px">
+      Currently: <b>{{ school.rotation_label }}</b> · {{ counts.periods }} periods
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>✅ Course requests</h3>
+    <p class="muted" style="font-size:.92rem">Open and close selection windows, then review each
+       student's ranked 1st and 2nd picks.</p>
+    <div class="stack">
+      <a class="btn btn-block" href="{{ url_for('courses.review_requests') }}">Review requests</a>
+      <a class="btn btn-ghost btn-block" href="{{ url_for('courses.windows') }}">Selection windows</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📊 Attendance &amp; testing</h3>
+    <p class="muted" style="font-size:.92rem">Daily rates, outstanding sections, chronic absence
+       tracking, and standardized results against district and state.</p>
+    <div class="stack">
+      <a class="btn btn-block" href="{{ url_for('attendance.overview') }}">Attendance overview</a>
+      <a class="btn btn-ghost btn-block" href="{{ url_for('grades.analytics') }}">Test scores</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🤝 {{ support_label }} blocks</h3>
+    <p class="muted" style="font-size:.92rem">See who's signed up for each session, and
+       place students where they need to be — placements they can't drop.</p>
+    <div class="stack">
+      <a class="btn btn-block" href="{{ url_for('support.overview') }}">{{ support_label }} overview</a>
+      <a class="btn btn-ghost btn-block" href="{{ url_for('documents.index') }}">Documents</a>
+    </div>
+  </div>
+</div>
+
+<div class="card card-tint" style="margin-top:20px">
+  <h3>Looking for sales?</h3>
+  <p class="muted" style="font-size:.9rem; margin:0">
+    Demo and purchase requests belong to Homeroom's own staff, not to schools. If you need
+    something about your contract, contact your Homeroom account manager.
+  </p>
+</div>
+{% endblock %}

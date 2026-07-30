@@ -1,0 +1,174 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'home' %}
+{% block title %}{{ student.full_name }} — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ student.full_name }}</h1>
+    <div class="sub">
+      {{ link.relationship_label }} · Grade {{ student.grade_level or '—' }} ·
+      <span class="mono">{{ student.student_number or '—' }}</span>
+      {% if term %} · {{ term.name }}, {{ term.school_year }}{% endif %}
+    </div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('parents.index') }}">← Family</a>
+</div>
+
+{% if risk.level != 'none' %}
+<div class="card {{ 'risk-high' if risk.level == 'high' else 'risk-watch' }} risk-row"
+     style="margin-bottom:18px">
+  <b>{{ 'Worth a conversation with the school' if risk.level == 'high' else 'Worth watching' }}</b>
+  <ul class="risk-reasons" style="margin:6px 0 0; padding-left:18px">
+    {% for reason in risk.reasons %}<li>{{ reason }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="grid grid-sidebar">
+  <div class="stack">
+    {% if report %}
+    <div class="card">
+      <div class="card-head">
+        <h3>Grades</h3>
+        {% if report.average is not none %}
+          <span class="grade-pill" style="color:{{ report.average|grade_color }}">
+            <b>{{ report.average }}%</b> average</span>
+        {% endif %}
+      </div>
+      {% if report.rows %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead><tr><th>Course</th><th>Teacher</th><th class="num">Missing</th><th>Grade</th></tr></thead>
+            <tbody>
+              {% for row in report.rows %}
+              <tr>
+                <td><b>{{ row.course.name }}</b><br>
+                  <small class="muted mono">{{ row.course.code }}</small></td>
+                <td>{{ row.course.teacher.full_name if row.course.teacher else '—' }}</td>
+                <td class="num">{% if row.missing %}<b style="color:var(--bad)">{{ row.missing }}</b>{% else %}0{% endif %}</td>
+                <td>
+                  {% if row.percent is not none %}
+                    <span class="grade-pill" style="color:{{ row.percent|grade_color }}">
+                      <b>{{ row.letter }}</b> {{ row.percent }}%</span>
+                  {% else %}<span class="muted">—</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">No courses on the schedule.</div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="card"><div class="empty"><strong>Grades not shared</strong>
+      This guardian link doesn't include grade access.</div></div>
+    {% endif %}
+
+    {% if attendance %}
+    <div class="card">
+      <div class="card-head">
+        <h3>Attendance</h3>
+        <span class="badge badge-{{ 'ok' if attendance.rate >= 94 else ('warn' if attendance.rate >= 90 else 'bad') }}">
+          {{ attendance.rate }}%</span>
+      </div>
+      <div class="grid grid-4" style="gap:12px">
+        <div class="stat"><div class="stat-label">Present</div>
+          <div class="stat-value" style="font-size:1.4rem">{{ attendance.totals.present }}</div></div>
+        <div class="stat"><div class="stat-label">Absent</div>
+          <div class="stat-value" style="font-size:1.4rem; color:var(--bad)">{{ attendance.totals.absent }}</div></div>
+        <div class="stat"><div class="stat-label">Tardy</div>
+          <div class="stat-value" style="font-size:1.4rem; color:var(--warn)">{{ attendance.totals.tardy }}</div></div>
+        <div class="stat"><div class="stat-label">Excused</div>
+          <div class="stat-value" style="font-size:1.4rem">{{ attendance.totals.excused }}</div></div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head"><h3>Upcoming assignments</h3></div>
+      {% if upcoming %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead><tr><th>Assignment</th><th>Course</th><th>Due</th><th class="num">Points</th></tr></thead>
+            <tbody>
+              {% for item in upcoming %}
+              <tr>
+                <td><b>{{ item.title }}</b></td>
+                <td class="muted">{{ item.course.code }}</td>
+                <td>{{ item.due_on|pretty_date }}</td>
+                <td class="num">{{ '%g'|format(item.points_possible) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">Nothing due in the next two weeks.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h3>Today</h3></div>
+      {% set day_rows = schedule.rows | selectattr('course') | list %}
+      {% if day_rows %}
+        <ul class="timeline">
+          {% for row in day_rows %}
+          <li class="{{ row.state }}">
+            <span class="time">{{ row.start_time|pretty_time }}</span>
+            <div class="body">
+              <b>{{ row.course.name }}</b>
+              <span>{{ row.period.label }} · Rm {{ row.course.room or '—' }}</span>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">No classes scheduled today.</div>
+      {% endif %}
+    </div>
+
+    <div class="card card-tint">
+      <h3>Coming up at school</h3>
+      {% if events %}
+        <div class="stack" style="margin-top:10px">
+          {% for event in events %}
+          <div class="row-between" style="gap:8px; align-items:flex-start">
+            <div style="min-width:0">
+              <b style="font-size:.89rem">{{ event.title }}</b>
+              <div class="muted" style="font-size:.79rem">{{ event.event_date|pretty_date }}</div>
+            </div>
+            <span class="badge ev-{{ event.category }}" style="text-transform:capitalize">
+              {{ event.category }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted" style="font-size:.9rem; margin:0">Nothing scheduled.</p>
+      {% endif %}
+    </div>
+
+    <div class="card card-tint">
+      <h3>What you can see</h3>
+      <dl class="kv" style="grid-template-columns:1fr auto; font-size:.88rem">
+        <dt>Grades</dt>
+        <dd><span class="badge badge-{{ 'ok' if link.can_view_grades else 'bad' }}">
+          {{ 'Yes' if link.can_view_grades else 'No' }}</span></dd>
+        <dt>Attendance</dt>
+        <dd><span class="badge badge-{{ 'ok' if link.can_view_attendance else 'bad' }}">
+          {{ 'Yes' if link.can_view_attendance else 'No' }}</span></dd>
+        <dt>Documents</dt>
+        <dd><span class="badge badge-{{ 'ok' if link.can_view_documents else 'bad' }}">
+          {{ 'Yes' if link.can_view_documents else 'No' }}</span></dd>
+      </dl>
+      <p class="field-hint" style="margin-top:12px">
+        The school office controls what each guardian link shares.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

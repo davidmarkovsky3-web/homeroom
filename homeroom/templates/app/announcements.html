@@ -1,0 +1,128 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'more' %}
+{% set active_sub = 'announcements' %}
+{% block title %}Announcements — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Announcements</h1>
+    <div class="sub">{{ school.name }} · {{ announcements|length }} posted</div>
+  </div>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head"><h3>Posted</h3></div>
+    {% if announcements %}
+      <div class="stack">
+        {% for item in announcements %}
+        <div class="notice {{ 'urgent' if item.urgent }}" style="margin:0">
+          <div class="notice-icon">{{ '❗' if item.urgent else '📢' }}</div>
+          <div class="notice-body">
+            <b>{{ item.title }}</b>
+            {% if item.body %}<p>{{ item.body }}</p>{% endif %}
+            <div class="notice-meta">
+              <span class="badge badge-brand">{{ item.audience_label }}</span>
+              {% if item.grade_level %}<span class="badge">Grade {{ item.grade_level }}</span>{% endif %}
+              {% if not item.is_live %}<span class="badge badge-warn">Not live</span>{% endif %}
+              {{ item.starts_on|pretty_date }}
+              {% if item.expires_on %} – {{ item.expires_on|pretty_date }}{% endif %}
+              {% if item.due_on %} · <b>action due {{ item.due_on|pretty_date }}</b>{% endif %}
+              {% if item.created_by %} · {{ item.created_by.full_name }}{% endif %}
+            </div>
+          </div>
+          <form method="post"
+                action="{{ url_for('notices.delete_announcement', announcement_id=item.id) }}"
+                onsubmit="return confirm('Remove “{{ item.title }}”?');">
+            <button class="btn btn-sm btn-ghost" type="submit">Remove</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty"><strong>Nothing posted</strong>
+        Announcements appear in everyone's Notification Center.</div>
+    {% endif %}
+  </div>
+
+  <div class="card card-tint">
+    <h3>Post an announcement</h3>
+    <form method="post">
+      <div class="field">
+        <label for="title">Title *</label>
+        <input id="title" name="title" type="text" required
+               placeholder="Field trip permission forms due Friday">
+      </div>
+      <div class="field">
+        <label for="body">Message</label>
+        <textarea id="body" name="body" style="min-height:90px"
+                  placeholder="What people need to know, and what they need to do."></textarea>
+      </div>
+
+      <div class="field">
+        <label for="audience">Who sees it</label>
+        <select id="audience" name="audience">
+          {% for key, label in audiences.items() %}
+            <option value="{{ key }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="grade_level">Limit to a grade</label>
+        <select id="grade_level" name="grade_level">
+          <option value="">All grades</option>
+          {% for grade in school.grade_range %}
+            <option value="{{ grade }}">Grade {{ grade }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <fieldset>
+        <legend>Needs an action?</legend>
+        <p class="field-hint" style="margin-top:0">
+          For things like a form to return — shows a button and a due date.
+        </p>
+        <div class="field">
+          <label for="action_label">Button text</label>
+          <input id="action_label" name="action_label" type="text"
+                 placeholder="Open the permission form">
+        </div>
+        <div class="field">
+          <label for="action_url">Link</label>
+          <input id="action_url" name="action_url" type="text"
+                 placeholder="/app/documents/">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="due_on">Action due</label>
+          <input id="due_on" name="due_on" type="date">
+        </div>
+      </fieldset>
+
+      <div class="grid grid-2" style="gap:0 12px">
+        <div class="field">
+          <label for="starts_on">Show from</label>
+          <input id="starts_on" name="starts_on" type="date" value="{{ today.isoformat() }}">
+        </div>
+        <div class="field">
+          <label for="expires_on">Stop showing</label>
+          <input id="expires_on" name="expires_on" type="date">
+        </div>
+      </div>
+
+      <div class="check">
+        <input type="checkbox" id="urgent" name="urgent">
+        <label for="urgent"><b>Urgent</b><br>
+          <span class="muted" style="font-weight:400">Pins to the top and counts on the bell.</span></label>
+      </div>
+      <div class="check">
+        <input type="checkbox" id="push" name="push" checked>
+        <label for="push"><b>Also send as a personal notification</b><br>
+          <span class="muted" style="font-weight:400">Lands in each person's centre individually.</span></label>
+      </div>
+
+      <button class="btn btn-block" type="submit">Post announcement</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

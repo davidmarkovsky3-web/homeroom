@@ -1,0 +1,50 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'staff' %}
+{% block title %}District staff — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Staff directory</h1>
+    <div class="sub">{{ district.name }} · {{ people|length }} staff accounts</div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('district.index') }}">← District</a>
+</div>
+
+<div class="card">
+  {% if people %}
+    <div class="table-wrap" style="border:none">
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Role</th><th>School</th><th>Department</th>
+              <th>Email</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for person in people %}
+          <tr>
+            <td>
+              <div class="row" style="gap:9px; flex-wrap:nowrap">
+                <div class="avatar" style="width:28px; height:28px; font-size:.7rem;
+                     background:{{ 'var(--brand)' if person.is_admin else 'var(--accent)' }}">
+                  {{ person.initials }}</div>
+                <b>{{ person.display_name }}</b>
+              </div>
+            </td>
+            <td><span class="badge badge-{{ 'brand' if person.is_admin else 'accent' }}">
+              {{ person.role_label }}</span></td>
+            <td>{{ person.school.name if person.school else '—' }}</td>
+            <td class="muted">{{ person.department or person.title or '—' }}</td>
+            <td class="mono muted">{{ person.email }}</td>
+            <td><span class="badge badge-{{ 'ok' if person.active else 'bad' }}">
+              {{ 'Active' if person.active else 'Inactive' }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty"><strong>No staff accounts</strong>
+      No teachers or administrators exist at schools in this district yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

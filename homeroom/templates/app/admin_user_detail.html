@@ -1,0 +1,312 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'admin' %}
+{% block title %}{{ user.full_name }} — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="row">
+      <div class="avatar" style="width:42px; height:42px; font-size:.95rem;
+           background:{{ 'var(--brand)' if user.is_admin else ('var(--accent)' if user.is_teacher else ('var(--info)' if user.is_parent else 'var(--ink-3)')) }}">
+        {{ user.initials }}
+      </div>
+      <div>
+        <h1 style="margin:0">{{ user.full_name }}</h1>
+        <div class="sub">
+          <span class="badge badge-{{ 'brand' if user.is_admin else ('accent' if user.is_teacher else 'info') }}">
+            {{ user.role_label }}</span>
+          <span class="mono">{{ user.email }}</span>
+          {% if not user.active %}<span class="badge badge-bad">Inactive</span>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.users') }}">← All users</a>
+    {% if user.is_student %}
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('grades.report', student=user.id) }}">Grades</a>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('attendance.student_detail', student_id=user.id) }}">Attendance</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h3>Profile</h3></div>
+      <form method="post">
+        <div class="grid grid-2" style="gap:0 16px">
+          <div class="field">
+            <label for="first_name">First name</label>
+            <input id="first_name" name="first_name" type="text" value="{{ user.first_name }}">
+          </div>
+          <div class="field">
+            <label for="last_name">Last name</label>
+            <input id="last_name" name="last_name" type="text" value="{{ user.last_name }}">
+          </div>
+        </div>
+        <div class="field">
+          <label for="phone">Phone</label>
+          <input id="phone" name="phone" type="tel" value="{{ user.phone or '' }}">
+        </div>
+
+        {% if user.is_student %}
+        <div class="grid grid-3" style="gap:0 14px">
+          <div class="field">
+            <label for="student_number">Student ID</label>
+            <input id="student_number" name="student_number" type="text"
+                   value="{{ user.student_number or '' }}">
+          </div>
+          <div class="field">
+            <label for="grade_level">Grade</label>
+            <select id="grade_level" name="grade_level">
+              <option value="">—</option>
+              {% for grade in school.grade_range %}
+                <option value="{{ grade }}" {% if user.grade_level == grade %}selected{% endif %}>
+                  Grade {{ grade }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% if uses_homeroom %}
+          <div class="field">
+            <label for="homeroom">{{ homeroom_label }}</label>
+            <input id="homeroom" name="homeroom" type="text" value="{{ user.homeroom or '' }}">
+          </div>
+          {% endif %}
+        </div>
+        {% elif not user.is_parent %}
+        <div class="grid grid-2" style="gap:0 14px">
+          <div class="field">
+            <label for="department">Department</label>
+            <input id="department" name="department" type="text" value="{{ user.department or '' }}">
+          </div>
+          <div class="field">
+            <label for="title">Title</label>
+            <input id="title" name="title" type="text" value="{{ user.title or '' }}">
+          </div>
+        </div>
+        {% endif %}
+
+        <button class="btn" type="submit">Save profile</button>
+      </form>
+    </div>
+
+    {% if user.is_parent %}
+    <div class="card">
+      <div class="card-head">
+        <h3>Linked students</h3>
+        <span class="badge {{ 'badge-ok' if children else 'badge-bad' }}">{{ children|length }}</span>
+      </div>
+      {% if children %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead><tr><th>Student</th><th>Relationship</th><th class="num">Grade</th>
+                       <th class="tight"></th></tr></thead>
+            <tbody>
+              {% for link in children %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('admin.user_detail', user_id=link.student.id) }}">
+                    <b>{{ link.student.display_name }}</b></a>
+                  {% if link.is_primary %}<span class="badge badge-brand">Primary</span>{% endif %}
+                </td>
+                <td>{{ link.relationship_label }}</td>
+                <td class="num">{{ link.student.grade_level or '—' }}</td>
+                <td class="tight">
+                  <form method="post" action="{{ url_for('admin.unlink_child', link_id=link.id) }}"
+                        onsubmit="return confirm('Unlink {{ link.student.full_name }}?');">
+                    <button class="btn btn-sm btn-ghost" type="submit">Unlink</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="flash flash-warning">
+          This parent account has no linked students, so it shows nothing when signed in.
+        </div>
+      {% endif %}
+
+      <hr class="divider">
+      <form method="post" action="{{ url_for('admin.link_child', user_id=user.id) }}"
+            class="row" style="gap:10px; align-items:flex-end">
+        <div class="field grow" style="margin:0; max-width:360px">
+          <label for="student_id">Link a student</label>
+          <select id="student_id" name="student_id" required>
+            <option value="">— Choose a student —</option>
+            {% for student in all_students %}
+              <option value="{{ student.id }}">{{ student.display_name }}
+                (grade {{ student.grade_level or '—' }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field" style="margin:0; width:150px">
+          <label for="relationship">Relationship</label>
+          <input id="relationship" name="relationship" type="text" value="Parent">
+        </div>
+        <button class="btn btn-sm" type="submit">Link</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if user.is_student %}
+    <div class="card">
+      <div class="card-head">
+        <h3>Enrolled courses</h3>
+        <span class="badge">{{ enrolled|length }}</span>
+      </div>
+      {% if enrolled %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead><tr><th>Course</th><th>Period</th><th>Meets</th>
+                       <th class="hide-sm">Teacher</th><th class="tight"></th></tr></thead>
+            <tbody>
+              {% for course in enrolled %}
+              <tr>
+                <td><a href="{{ url_for('courses.detail', course_id=course.id) }}">
+                  <b>{{ course.name }}</b></a><br>
+                  <small class="muted mono">{{ course.code }}</small></td>
+                <td>{{ course.period.label if course.period else '—' }}</td>
+                <td><span class="badge">{{ course.days_label }}</span></td>
+                <td class="hide-sm">{{ course.teacher.full_name if course.teacher else '—' }}</td>
+                <td class="tight">
+                  <form method="post" action="{{ url_for('admin.unenroll', user_id=user.id, course_id=course.id) }}"
+                        onsubmit="return confirm('Remove {{ user.first_name }} from {{ course.code }}?');">
+                    <button class="btn btn-sm btn-ghost" type="submit">Remove</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">Not enrolled in any courses yet.</div>
+      {% endif %}
+
+      <hr class="divider">
+      <form method="post" action="{{ url_for('admin.enroll', user_id=user.id) }}"
+            class="row" style="gap:10px">
+        <select name="course_id" class="grow" style="max-width:420px">
+          <option value="">— Add to a course —</option>
+          {% for course in available %}
+            <option value="{{ course.id }}" {% if course.is_full %}disabled{% endif %}>
+              {{ course.code }} — {{ course.name }}
+              ({{ course.period.label if course.period else 'unscheduled' }},
+               {{ course.seats_taken }}/{{ course.capacity }}{% if course.is_full %}, full{% endif %})
+            </option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-sm" type="submit">Enroll</button>
+      </form>
+      <p class="field-hint">Enrollments that collide with another course in the same period
+         on overlapping days are rejected.</p>
+    </div>
+
+    {% if guardians %}
+    <div class="card">
+      <div class="card-head">
+        <h3>Guardians</h3>
+        <span class="badge">{{ guardians|length }}</span>
+      </div>
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead><tr><th>Guardian</th><th>Relationship</th><th>Email</th><th class="tight"></th></tr></thead>
+          <tbody>
+            {% for link in guardians %}
+            <tr>
+              <td><a href="{{ url_for('admin.user_detail', user_id=link.parent.id) }}">
+                <b>{{ link.parent.full_name }}</b></a></td>
+              <td>{{ link.relationship_label }}</td>
+              <td class="mono muted">{{ link.parent.email }}</td>
+              <td class="tight">
+                <form method="post" action="{{ url_for('admin.unlink_child', link_id=link.id) }}"
+                      onsubmit="return confirm('Unlink this guardian?');">
+                  <button class="btn btn-sm btn-ghost" type="submit">Unlink</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if user.is_teacher %}
+    <div class="card">
+      <div class="card-head">
+        <h3>Assigned sections</h3>
+        <span class="badge">{{ taught|length }}</span>
+      </div>
+      {% if taught %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead><tr><th>Section</th><th>Period</th><th class="hide-sm">Room</th>
+                       <th class="num">Enrolled</th></tr></thead>
+            <tbody>
+              {% for course in taught %}
+              <tr>
+                <td><a href="{{ url_for('courses.detail', course_id=course.id) }}">
+                  <b>{{ course.name }}</b></a><br>
+                  <small class="muted mono">{{ course.code }}</small></td>
+                <td>{{ course.period.label if course.period else '—' }}</td>
+                <td class="hide-sm">{{ course.room or '—' }}</td>
+                <td class="num">{{ course.seats_taken }}/{{ course.capacity }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">No sections assigned. Assign them from
+          <a href="{{ url_for('admin.courses') }}">Manage courses</a>.</div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card card-tint">
+      <h3>Account</h3>
+      <dl class="kv" style="grid-template-columns:110px 1fr">
+        <dt>Email</dt><dd class="mono">{{ user.email }}</dd>
+        <dt>Role</dt><dd>{{ user.role_label }}</dd>
+        <dt>School</dt><dd>{{ user.school.name if user.school else '—' }}</dd>
+        <dt>Status</dt>
+        <dd><span class="badge badge-{{ 'ok' if user.active else 'bad' }}">
+          {{ 'Active' if user.active else 'Inactive' }}</span></dd>
+        <dt>Last sign-in</dt>
+        <dd>{{ user.last_login_at.date()|pretty_date if user.last_login_at else 'Never' }}</dd>
+        <dt>Created</dt><dd>{{ user.created_at.date()|pretty_date }}</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h3>Actions</h3>
+      <div class="stack" style="margin-top:12px">
+        <form method="post" action="{{ url_for('admin.reset_password', user_id=user.id) }}"
+              onsubmit="return confirm('Generate a new temporary password for {{ user.full_name }}?');">
+          <button class="btn btn-ghost btn-block" type="submit">Reset password</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.toggle_user', user_id=user.id) }}"
+              onsubmit="return confirm('{{ 'Deactivate' if user.active else 'Reactivate' }} this account?');">
+          <button class="btn btn-block {{ 'btn-ghost' if user.active else 'btn-soft' }}" type="submit">
+            {{ 'Deactivate account' if user.active else 'Reactivate account' }}</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.delete_user', user_id=user.id) }}"
+              onsubmit="return confirm('Permanently delete {{ user.full_name }} and their records? This cannot be undone.');">
+          <button class="btn btn-danger btn-block" type="submit">Delete account</button>
+        </form>
+      </div>
+      <p class="field-hint" style="margin-top:12px">
+        Deactivating keeps history and blocks sign-in. Deleting removes the account along with
+        its grades and attendance.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,236 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'home' %}
+{% block title %}Home — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ school.name if school else 'No school selected' }}</h1>
+    <div class="sub">
+      {{ today.strftime('%A, %B %d, %Y').replace(' 0', ' ') }} · {{ day_label or 'No school today' }}
+      {% if term %} · {{ term.name }}, {{ term.school_year }}{% endif %}
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.new_user') }}">Add user</a>
+    <a class="btn btn-sm" href="{{ url_for('admin.index') }}">Administration</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:18px">
+  <div class="card-head">
+    <h3>Coming up</h3>
+    <div class="row">
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('calendar.new_event') }}">Add event</a>
+      <a class="btn btn-sm" href="{{ url_for('notices.announcements') }}">Post an announcement</a>
+    </div>
+  </div>
+  {% if upcoming_events %}
+    <div class="grid grid-2">
+      {% for event in upcoming_events[:6] %}
+      {% set days_out = (event.event_date - today).days %}
+      <div class="row-between" style="gap:8px; align-items:flex-start">
+        <div style="min-width:0">
+          <b style="font-size:.9rem">{{ event.title }}</b>
+          <div class="muted" style="font-size:.79rem">
+            {{ event.event_date|pretty_date }}
+            {% if days_out == 0 %}· <b style="color:var(--bad)">today</b>
+            {% elif days_out == 1 %}· <b style="color:var(--warn)">tomorrow</b>{% endif %}
+          </div>
+        </div>
+        <span class="badge ev-{{ event.category }}" style="text-transform:capitalize">
+          {{ event.category }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">Nothing in the next three weeks.</div>
+  {% endif %}
+</div>
+
+<div class="quick-links" style="margin-bottom:18px">
+  <a class="quick-link" href="{{ url_for('notices.announcements') }}"><span class="qi">📢</span> Announce</a>
+  <a class="quick-link" href="{{ url_for('attendance.overview') }}"><span class="qi">📅</span> Attendance</a>
+  <a class="quick-link" href="{{ url_for('more.absences') }}"><span class="qi">✉️</span> Absence requests</a>
+  <a class="quick-link" href="{{ url_for('importer.index') }}"><span class="qi">📥</span> Bulk import</a>
+  <a class="quick-link" href="{{ url_for('more.demographics') }}"><span class="qi">👥</span> Demographics</a>
+  <a class="quick-link" href="{{ url_for('admin.bell_schedule') }}"><span class="qi">🔔</span> Bell schedule</a>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:18px">
+  <div class="stat">
+    <div class="stat-label">Students</div>
+    <div class="stat-value">{{ '{:,}'.format(student_count) }}</div>
+    <div class="stat-note"><a href="{{ url_for('admin.users', role='student') }}">Manage</a></div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Staff</div>
+    <div class="stat-value">{{ teacher_count + admin_count }}</div>
+    <div class="stat-note">{{ teacher_count }} teachers · {{ parent_count }} parent accounts</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Attendance today</div>
+    <div class="stat-value">{{ attendance_rate|pct if attendance_rate is not none else '—' }}</div>
+    {% if attendance_rate is not none %}
+      <div class="meter {{ 'meter-ok' if attendance_rate >= 94 else ('meter-warn' if attendance_rate >= 90 else 'meter-bad') }}">
+        <span style="width:{{ attendance_rate }}%"></span>
+      </div>
+    {% else %}
+      <div class="stat-note">Not yet submitted</div>
+    {% endif %}
+  </div>
+  <div class="stat">
+    <div class="stat-label">Pending course requests</div>
+    <div class="stat-value">{{ '{:,}'.format(pending_requests) }}</div>
+    <div class="stat-note"><a href="{{ url_for('courses.review_requests') }}">Review queue</a></div>
+  </div>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head">
+        <h3>Test scores</h3>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('grades.analytics') }}">All assessments</a>
+      </div>
+      {% if assessments %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead>
+              <tr><th>Assessment</th><th class="num">School</th><th class="num">District</th>
+                  <th class="num">State</th><th class="num">vs. state</th>
+                  <th class="num">Proficient</th></tr>
+            </thead>
+            <tbody>
+              {% for row in assessments %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('grades.assessment_detail', assessment_id=row.assessment.id) }}">
+                    <b>{{ row.assessment.name }}</b></a><br>
+                  <small class="muted">{{ row.assessment.subject }}</small>
+                </td>
+                <td class="num"><b>{{ row.school_average if row.school_average is not none else '—' }}</b></td>
+                <td class="num muted">{{ row.district_average if row.district_average is not none else '—' }}</td>
+                <td class="num muted">{{ row.state_average if row.state_average is not none else '—' }}</td>
+                <td class="num">
+                  {% if row.vs_state is not none %}
+                    <b style="color:{{ 'var(--ok)' if row.vs_state >= 0 else 'var(--bad)' }}">
+                      {{ '+' if row.vs_state > 0 }}{{ row.vs_state }}</b>
+                  {% else %}<span class="muted">—</span>{% endif %}
+                </td>
+                <td class="num">{{ row.proficient_rate|pct if row.proficient_rate is not none else '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">No assessment results loaded for this school.</div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Today, period by period</h3>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('main.schedule') }}">Week view</a>
+      </div>
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th>Period</th><th>Time</th><th class="num">Sections</th>
+                <th class="num">Students in class</th><th class="tight"></th></tr>
+          </thead>
+          <tbody>
+            {% for row in overview.rows %}
+            <tr class="{{ 'muted' if row.state == 'past' }}">
+              <td>
+                <b>{{ row.period.label }}</b>
+                {% if row.period.is_support %}<span class="badge badge-accent">{{ support_label }}</span>{% endif %}
+                {% if row.state == 'current' %}<span class="badge badge-brand">Now</span>{% endif %}
+              </td>
+              <td class="mono muted">{{ row.time_range }}</td>
+              <td class="num">
+                {% if row.period.is_support %}{{ row.support_sessions|length }}
+                {% else %}{{ row.section_count }}{% endif %}
+              </td>
+              <td class="num">
+                {% if row.period.is_support %}{{ row.support_seats }}
+                {% else %}{{ row.students_in_class }}{% endif %}
+              </td>
+              <td class="tight">
+                {% if row.period.is_support %}
+                  <a class="btn btn-sm btn-ghost" href="{{ url_for('support.overview') }}">{{ support_label }}</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <h3>Quick actions</h3>
+      <div class="stack" style="margin-top:12px">
+        <a class="btn btn-ghost btn-block" href="{{ url_for('attendance.overview') }}">Attendance overview</a>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('support.overview') }}">{{ support_label }} overview</a>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('courses.review_requests') }}">Course requests</a>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('admin.courses') }}">Manage courses</a>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('admin.bell_schedule') }}">Bell schedule &amp; rotation</a>
+      </div>
+    </div>
+
+    <div class="card card-tint">
+      <div class="card-head"><h3>School</h3></div>
+      <dl class="kv" style="grid-template-columns:110px 1fr">
+        <dt>Timetable</dt><dd>{{ school.rotation_label if school else '—' }}</dd>
+        <dt>Grades</dt>
+        <dd>{% if school %}{{ school.low_grade }}–{{ school.high_grade }}{% else %}—{% endif %}</dd>
+        <dt>Courses</dt><dd>{{ course_count }}</dd>
+        <dt>District</dt>
+        <dd>{{ school.district.name if school and school.district else '—' }}</dd>
+      </dl>
+    </div>
+
+    {% if window %}
+    <div class="card card-tint">
+      <div class="card-head">
+        <h3>Selection window</h3>
+        <span class="badge badge-{{ 'ok' if window.accepting else 'warn' }}">
+          {{ 'Open' if window.accepting else 'Closed' }}</span>
+      </div>
+      <p style="font-size:.9rem; margin-bottom:6px"><b>{{ window.name }}</b></p>
+      <p class="muted" style="font-size:.85rem; margin:0">
+        {{ window.opens_on|pretty_date }} – {{ window.closes_on|pretty_date }} ·
+        {{ window.required_slots }} choices required
+      </p>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Coming up</h3>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('calendar.index') }}">Calendar</a>
+      </div>
+      {% if upcoming_events %}
+        <div class="stack">
+          {% for event in upcoming_events %}
+          <div class="row-between" style="gap:8px; align-items:flex-start">
+            <div style="min-width:0">
+              <b style="font-size:.89rem">{{ event.title }}</b>
+              <div class="muted" style="font-size:.79rem">{{ event.event_date|pretty_date }}</div>
+            </div>
+            <span class="badge ev-{{ event.category }}" style="text-transform:capitalize">
+              {{ event.category }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">Nothing scheduled.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

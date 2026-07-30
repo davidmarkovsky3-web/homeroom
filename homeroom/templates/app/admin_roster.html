@@ -1,0 +1,148 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'admin' %}
+{% block title %}{{ course.code }} roster — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ course.name }}</h1>
+    <div class="sub">
+      <span class="mono">{{ course.code }}</span> ·
+      {{ course.teacher.full_name if course.teacher else 'No teacher assigned' }} ·
+      {{ course.period.label if course.period else 'Unscheduled' }} ·
+      {{ course.seats_taken }}/{{ course.capacity }} seats
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.courses') }}">← Courses</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('courses.detail', course_id=course.id) }}">Class page</a>
+  </div>
+</div>
+
+{% if not course.teacher %}
+<div class="flash flash-warning" style="margin-bottom:18px">
+  No teacher is assigned to this class, so nobody can post assignments, enter grades or
+  announce anything to it. Assign one from <a href="{{ url_for('admin.courses') }}">Manage courses</a>.
+</div>
+{% endif %}
+
+<div class="grid grid-2" style="align-items:start">
+  <div class="card">
+    <div class="card-head">
+      <h3>Enrolled</h3>
+      <span class="badge {{ 'badge-bad' if course.is_full else 'badge-ok' }}">
+        {{ roster|length }} / {{ course.capacity }}</span>
+    </div>
+    {% if roster %}
+      <form method="post">
+        <input type="hidden" name="action" value="remove">
+        <div class="table-wrap" style="border:none; max-height:520px; overflow-y:auto">
+          <table>
+            <thead>
+              <tr><th class="tight"></th><th>Student</th><th class="num">Grade</th>
+                  <th class="hide-sm">ID</th></tr>
+            </thead>
+            <tbody>
+              {% for student in roster %}
+              <tr>
+                <td class="tight">
+                  <input type="checkbox" name="student_id" value="{{ student.id }}"
+                         id="rm-{{ student.id }}" style="width:auto">
+                </td>
+                <td>
+                  <label for="rm-{{ student.id }}" style="margin:0; cursor:pointer">
+                    <b>{{ student.display_name }}</b></label>
+                </td>
+                <td class="num">{{ student.grade_level or '—' }}</td>
+                <td class="hide-sm mono muted">{{ student.student_number or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="row-between" style="margin-top:14px">
+          <span class="muted" style="font-size:.86rem">
+            Removing a student keeps their grades on file.</span>
+          <button class="btn btn-sm btn-ghost" type="submit">Remove selected</button>
+        </div>
+      </form>
+    {% else %}
+      <div class="empty"><strong>Nobody enrolled</strong>
+        Add students from the list on the right.</div>
+    {% endif %}
+  </div>
+
+  <div class="card card-tint">
+    <div class="card-head">
+      <h3>Add students</h3>
+      <span class="badge">{{ available|length }} available</span>
+    </div>
+    <p class="muted" style="font-size:.88rem; margin-top:-4px">
+      Tick as many as you like. Period clashes and a full class are refused with a reason
+      rather than silently skipped.
+    </p>
+    {% if available %}
+      <form method="post">
+        <input type="hidden" name="action" value="add">
+        <div class="field">
+          <input type="text" id="filter" placeholder="Filter by name or grade…"
+                 style="max-width:280px">
+        </div>
+        <div class="table-wrap" style="border:none; max-height:460px; overflow-y:auto">
+          <table id="available">
+            <thead>
+              <tr><th class="tight"></th><th>Student</th><th class="num">Grade</th>
+                  <th class="hide-sm">ID</th></tr>
+            </thead>
+            <tbody>
+              {% for student in available %}
+              <tr data-name="{{ student.display_name|lower }} grade {{ student.grade_level }}">
+                <td class="tight">
+                  <input type="checkbox" name="student_id" value="{{ student.id }}"
+                         id="add-{{ student.id }}" style="width:auto">
+                </td>
+                <td>
+                  <label for="add-{{ student.id }}" style="margin:0; cursor:pointer">
+                    {{ student.display_name }}</label>
+                </td>
+                <td class="num">{{ student.grade_level or '—' }}</td>
+                <td class="hide-sm mono muted">{{ student.student_number or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="row-between" style="margin-top:14px">
+          <button class="btn btn-sm btn-ghost" type="button" id="select-shown">
+            Select all shown</button>
+          <button class="btn" type="submit">Add selected</button>
+        </div>
+      </form>
+    {% else %}
+      <div class="empty">Every student at this school is already enrolled.</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  (function () {
+    var filter = document.getElementById('filter');
+    var table = document.getElementById('available');
+    if (!filter || !table) return;
+    var rows = table.querySelectorAll('tbody tr');
+
+    filter.addEventListener('input', function () {
+      var q = filter.value.toLowerCase().trim();
+      rows.forEach(function (row) {
+        row.hidden = q && row.dataset.name.indexOf(q) === -1;
+      });
+    });
+
+    document.getElementById('select-shown').addEventListener('click', function () {
+      rows.forEach(function (row) {
+        if (!row.hidden) row.querySelector('input[type=checkbox]').checked = true;
+      });
+    });
+  })();
+</script>
+{% endblock %}

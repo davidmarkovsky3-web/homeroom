@@ -1,0 +1,113 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'grades' %}
+{% block title %}Test scores — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Test scores</h1>
+    <div class="sub">
+      {{ school.name if school else 'No school selected' }} — standardized results
+      against district and state averages
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:18px">
+  <div class="stat">
+    <div class="stat-label">School average</div>
+    <div class="grade-lg" style="color:var(--brand)">{{ overall.school if overall.school is not none else '—' }}</div>
+    <div class="stat-note">across all assessments</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">District average</div>
+    <div class="grade-lg" style="color:var(--accent)">{{ overall.district if overall.district is not none else '—' }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">State average</div>
+    <div class="grade-lg muted">{{ overall.state if overall.state is not none else '—' }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Proficient</div>
+    <div class="grade-lg">{{ overall.proficient|pct if overall.proficient is not none else '—' }}</div>
+    <div class="stat-note">of students at this school</div>
+  </div>
+</div>
+
+{% if summaries %}
+<div class="stack">
+  {% for row in summaries %}
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h3 style="margin:0">{{ row.assessment.name }}</h3>
+        <div class="muted" style="font-size:.85rem">
+          {{ row.assessment.subject }} · administered
+          {{ row.assessment.administered_on|pretty_date }} ·
+          {{ row.school_n }} students at this school
+        </div>
+      </div>
+      <a class="btn btn-ghost btn-sm"
+         href="{{ url_for('grades.assessment_detail', assessment_id=row.assessment.id) }}">
+        Student results</a>
+    </div>
+
+    {% set scale = row.assessment.max_score or 100 %}
+    <div class="compare-bar">
+      <div class="compare-row">
+        <span><b>School</b></span>
+        <span class="compare-track">
+          <span class="bar-school"
+                style="width:{{ ((row.school_average or 0) / scale * 100)|round(1) }}%"></span>
+        </span>
+        <b class="num">{{ row.school_average if row.school_average is not none else '—' }}</b>
+      </div>
+      <div class="compare-row">
+        <span>District</span>
+        <span class="compare-track">
+          <span class="bar-district"
+                style="width:{{ ((row.district_average or 0) / scale * 100)|round(1) }}%"></span>
+        </span>
+        <span class="num">{{ row.district_average if row.district_average is not none else '—' }}</span>
+      </div>
+      <div class="compare-row">
+        <span>State</span>
+        <span class="compare-track">
+          <span class="bar-state"
+                style="width:{{ ((row.state_average or 0) / scale * 100)|round(1) }}%"></span>
+        </span>
+        <span class="num">{{ row.state_average if row.state_average is not none else '—' }}</span>
+      </div>
+    </div>
+
+    <hr class="divider">
+    <div class="grid grid-3" style="gap:14px">
+      <div>
+        <div class="stat-label">vs. district</div>
+        <div style="font-size:1.3rem; font-weight:700;
+                    color:{{ 'var(--ok)' if (row.vs_district or 0) >= 0 else 'var(--bad)' }}">
+          {% if row.vs_district is not none %}{{ '+' if row.vs_district > 0 }}{{ row.vs_district }}{% else %}—{% endif %}
+        </div>
+      </div>
+      <div>
+        <div class="stat-label">vs. state</div>
+        <div style="font-size:1.3rem; font-weight:700;
+                    color:{{ 'var(--ok)' if (row.vs_state or 0) >= 0 else 'var(--bad)' }}">
+          {% if row.vs_state is not none %}{{ '+' if row.vs_state > 0 }}{{ row.vs_state }}{% else %}—{% endif %}
+        </div>
+      </div>
+      <div>
+        <div class="stat-label">Proficient rate</div>
+        <div style="font-size:1.3rem; font-weight:700">
+          {{ row.proficient_rate|pct if row.proficient_rate is not none else '—' }}</div>
+        <small class="muted">cutoff {{ '%g'|format(row.assessment.proficient_cutoff) }}</small>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card"><div class="empty"><strong>No assessment results</strong>
+  Nothing has been loaded for this school yet.</div></div>
+{% endif %}
+{% endblock %}

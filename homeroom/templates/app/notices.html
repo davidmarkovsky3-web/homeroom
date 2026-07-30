@@ -1,0 +1,97 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'more' %}
+{% set active_sub = 'notices' %}
+{% block title %}Notifications — Homeroom{% endblock %}
+
+{% macro notice_icon(kind) -%}
+{%- if kind == 'announcement' -%}📢
+{%- elif kind == 'reminder' -%}⏰
+{%- elif kind == 'grade' -%}📊
+{%- elif kind == 'assignment' -%}📝
+{%- elif kind == 'attendance' -%}📅
+{%- elif kind == 'absence' -%}✉️
+{%- elif kind == 'support' -%}🤝
+{%- else -%}🔔{%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Notification Center</h1>
+    <div class="sub">
+      {{ feed|length }} item{{ '' if feed|length == 1 else 's' }}
+      {% if unread %} · <strong>{{ unread }} needing attention</strong>{% endif %}
+    </div>
+  </div>
+  <form method="post" action="{{ url_for('notices.mark_all_read') }}">
+    <button class="btn btn-ghost btn-sm" type="submit">Mark all read</button>
+  </form>
+</div>
+
+{% if kinds %}
+<div class="pill-nav" style="margin-bottom:16px">
+  <a href="{{ url_for('notices.index') }}" class="{{ 'active' if not kind }}">All</a>
+  {% for option in kinds %}
+    <a href="{{ url_for('notices.index', kind=option) }}"
+       class="{{ 'active' if kind == option }}" style="text-transform:capitalize">{{ option }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if feed %}
+<div>
+  {% for item in feed %}
+  <div class="notice {{ 'urgent' if item.urgent }} {{ 'unread' if item.read is defined and not item.read }}">
+    <div class="notice-icon">{{ notice_icon(item.kind) }}</div>
+    <div class="notice-body">
+      <b>{{ item.title }}</b>
+      {% if item.body %}<p>{{ item.body }}</p>{% endif %}
+      <div class="notice-meta">
+        <span class="badge" style="text-transform:capitalize">{{ item.kind }}</span>
+        {% if item.at %}{{ item.at.strftime('%b %d, %Y').replace(' 0', ' ') }}{% endif %}
+        {% if item.from %} · from {{ item.from }}{% endif %}
+        {% if item.due_on %} · <b>due {{ item.due_on|pretty_date }}</b>{% endif %}
+      </div>
+    </div>
+    <div class="row" style="gap:6px; flex-wrap:nowrap; align-items:flex-start">
+      {% if item.link %}
+        <a class="btn btn-sm {{ 'btn-soft' if item.action_label else 'btn-ghost' }}"
+           href="{{ item.link }}">{{ item.action_label or 'Open' }}</a>
+      {% endif %}
+      {% if item.notification_id and not item.read %}
+        <form method="post" action="{{ url_for('notices.mark_read', notification_id=item.notification_id) }}">
+          <button class="btn btn-sm btn-ghost" type="submit">Dismiss</button>
+        </form>
+      {% elif item.announcement_id and not item.read %}
+        <form method="post"
+              action="{{ url_for('notices.mark_announcement_read', announcement_id=item.announcement_id) }}">
+          <button class="btn btn-sm btn-ghost" type="submit">Dismiss</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="empty">
+    <strong>Nothing to see</strong>
+    Announcements, test reminders, missing work and absence decisions all land here.
+  </div>
+</div>
+{% endif %}
+
+<div class="card card-tint" style="margin-top:18px">
+  <h3>What shows up here, and what counts on the bell</h3>
+  <p class="muted" style="font-size:.9rem">
+    Announcements and messages sent to you directly can be dismissed, and those are the
+    only things the bell counts — pressing “Mark all read” always clears it to zero.
+  </p>
+  <p class="muted" style="font-size:.9rem; margin:0">
+    Study reminders and missing-work notes are worked out live from your record rather
+    than stored, so there's nothing to dismiss: they disappear by themselves once the
+    test has passed or the work is handed in. They're listed here but never make the
+    bell red.
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'support' %}
+{% block title %}{{ session.name }} — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ session.name }}</h1>
+    <div class="sub">
+      {{ session.session_date|pretty_date }} · {{ session.period.label }}
+      ({{ session.period.time_range }}) · Room {{ session.location or '—' }} ·
+      {{ session.kind_label }}
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm"
+       href="{{ url_for('support.my_sessions', date=session.session_date.isoformat()) }}">← Back</a>
+    <form method="post" action="{{ url_for('support.delete_session', session_id=session.id) }}"
+          onsubmit="return confirm('Remove “{{ session.name }}”? Students signed up will need to pick again.');">
+      <button class="btn btn-sm btn-danger" type="submit">Remove session</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head">
+      <h3>Roster</h3>
+      <span class="badge">{{ roster|length }} / {{ session.capacity }}</span>
+    </div>
+    {% if roster %}
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th>Student</th><th class="num">Grade</th><th>How they got here</th>
+                <th class="tight"></th></tr>
+          </thead>
+          <tbody>
+            {% for signup in roster %}
+            <tr>
+              <td><b>{{ signup.student.display_name }}</b><br>
+                <small class="muted mono">{{ signup.student.student_number or '—' }}</small></td>
+              <td class="num">{{ signup.student.grade_level or '—' }}</td>
+              <td>
+                {% if signup.locked %}
+                  <span class="badge badge-warn">🔒 Assigned</span>
+                  {% if signup.assigned_by %}
+                    <br><small class="muted">by {{ signup.assigned_by.full_name }}</small>{% endif %}
+                  {% if signup.note %}<br><small class="muted">{{ signup.note }}</small>{% endif %}
+                {% else %}
+                  <span class="badge">Chose it</span>
+                {% endif %}
+              </td>
+              <td class="tight">
+                {% if current_user.is_admin or current_user.is_district_admin
+                      or current_user.is_homeroom_staff %}
+                <div class="row" style="gap:5px; flex-wrap:nowrap">
+                  <form method="post" action="{{ url_for('support.unlock', signup_id=signup.id) }}">
+                    <button class="btn btn-sm btn-ghost" type="submit">
+                      {{ 'Unlock' if signup.locked else 'Lock' }}</button>
+                  </form>
+                  <form method="post" action="{{ url_for('support.remove_signup', signup_id=signup.id) }}">
+                    <button class="btn btn-sm btn-ghost" type="submit">Remove</button>
+                  </form>
+                </div>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty"><strong>Nobody signed up yet</strong>
+        Students will appear here as they choose this session.</div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="stat-label">Seats filled</div>
+      <div class="stat-value">{{ session.seats_taken }}<span class="muted" style="font-size:1.1rem">/{{ session.capacity }}</span></div>
+      <div class="meter {{ 'meter-bad' if session.is_full else 'meter-ok' }}">
+        <span style="width:{{ session.fill_percent }}%"></span>
+      </div>
+    </div>
+    <div class="card card-tint">
+      <h3>Session</h3>
+      <dl class="kv" style="grid-template-columns:100px 1fr">
+        <dt>Teacher</dt><dd>{{ session.teacher.full_name if session.teacher else '—' }}</dd>
+        <dt>Type</dt><dd>{{ session.kind_label }}</dd>
+        <dt>Room</dt><dd>{{ session.location or '—' }}</dd>
+        <dt>Date</dt><dd>{{ session.session_date|pretty_date }}</dd>
+      </dl>
+      {% if session.description %}
+        <hr class="divider">
+        <p class="muted" style="font-size:.9rem; margin:0">{{ session.description }}</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

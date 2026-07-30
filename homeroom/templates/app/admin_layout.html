@@ -1,0 +1,157 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'admin' %}
+{% block title %}{{ layout.name }} layout — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ layout.name }}</h1>
+    <div class="sub">
+      Day layout for {{ school.name }} ·
+      {{ layout.entries|length }} slots · {{ layout.day_span }}
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.bell_schedule') }}">← Bell schedule</a>
+    <form method="post" action="{{ url_for('admin.duplicate_layout', layout_id=layout.id) }}">
+      <button class="btn btn-ghost btn-sm" type="submit">Duplicate</button>
+    </form>
+  </div>
+</div>
+
+<form method="post">
+  <div class="grid grid-sidebar">
+    <div class="card">
+      <div class="card-head">
+        <h3>Which slots run, and when</h3>
+        <span class="badge">{{ layout.entries|length }} selected</span>
+      </div>
+      <p class="muted" style="font-size:.88rem; margin-top:-4px">
+        Tick a slot to include it. Order follows the times you set. Anything left unticked
+        simply doesn't happen on this kind of day — and the courses in it don't meet.
+      </p>
+
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th class="tight">Runs</th><th>Slot</th><th>Kind</th>
+                <th>Start</th><th>End</th><th class="num">Sections</th></tr>
+          </thead>
+          <tbody>
+            {% for period in periods %}
+            {% set entry = entries.get(period.id) %}
+            <tr class="{{ '' if entry else 'muted' }}">
+              <td class="tight">
+                <input type="checkbox" name="slot" value="{{ period.id }}"
+                       id="slot-{{ period.id }}" style="width:auto"
+                       {% if entry %}checked{% endif %}>
+              </td>
+              <td>
+                <label for="slot-{{ period.id }}" style="margin:0; font-weight:650; cursor:pointer">
+                  {{ period.label }}</label>
+              </td>
+              <td>
+                <span class="badge {{ 'badge-accent' if period.is_support else ('badge-info' if not period.is_instructional else '') }}">
+                  {{ period.kind }}</span>
+              </td>
+              <td style="width:130px">
+                <input type="time" name="start_{{ period.id }}"
+                       value="{{ (entry.start_time if entry else period.start_time).strftime('%H:%M') }}">
+              </td>
+              <td style="width:130px">
+                <input type="time" name="end_{{ period.id }}"
+                       value="{{ (entry.end_time if entry else period.end_time).strftime('%H:%M') }}">
+              </td>
+              <td class="num muted">{{ period.courses|length }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="row-between" style="margin-top:18px">
+        <span class="muted" style="font-size:.88rem">
+          Times are specific to this layout — the same slot can run at different times on
+          different days.</span>
+        <button class="btn btn-lg" type="submit">Save layout</button>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-head"><h3>Layout details</h3></div>
+        <div class="field">
+          <label for="name">Name</label>
+          <input id="name" name="name" type="text" value="{{ layout.name }}">
+        </div>
+        <div class="field">
+          <label for="description">Description</label>
+          <input id="description" name="description" type="text"
+                 value="{{ layout.description or '' }}"
+                 placeholder="Late start, shortened periods">
+        </div>
+        <div class="field">
+          <label>Runs on these weekdays</label>
+          <div class="stack" style="gap:4px">
+            {% for token in weekday_order %}
+              {% set taken = [] %}
+              {% for other in other_layouts %}
+                {% if token in other.weekday_tokens %}{% if taken.append(other.name) %}{% endif %}{% endif %}
+              {% endfor %}
+              <div class="check" style="margin:0">
+                <input type="checkbox" id="wd-{{ token }}" name="default_weekdays" value="{{ token }}"
+                       {% if token in layout.weekday_tokens %}checked{% endif %}>
+                <label for="wd-{{ token }}">
+                  {{ weekday_names[token] }}
+                  {% if taken %}
+                    <span class="muted" style="font-weight:400">— currently {{ taken|join(', ') }}</span>
+                  {% endif %}
+                </label>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="field-hint">
+            If two layouts claim the same weekday, the first by name wins — so keep them distinct.
+          </div>
+        </div>
+        <div class="check">
+          <input type="checkbox" id="is_default" name="is_default"
+                 {% if layout.is_default %}checked{% endif %}>
+          <label for="is_default"><b>Default layout</b><br>
+            <span class="muted" style="font-weight:400">Used for any day no layout claims.</span></label>
+        </div>
+      </div>
+
+      <div class="card card-tint">
+        <h3>Preview</h3>
+        {% if layout.entries %}
+          <ul class="timeline" style="margin-top:10px">
+            {% for entry in layout.entries %}
+            <li class="{{ 'free' if not entry.period.is_instructional }}">
+              <span class="time">{{ entry.start_time|pretty_time }}<br>
+                <span style="opacity:.65">{{ entry.end_time|pretty_time }}</span></span>
+              <div class="body">
+                <b>{{ entry.period.label }}</b>
+                <span>{{ entry.period.kind }}</span>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted" style="font-size:.9rem; margin:0">
+            Nothing selected yet — this layout would be an empty day.</p>
+        {% endif %}
+      </div>
+
+      <div class="card card-tint">
+        <h3>Careful with</h3>
+        <p class="muted" style="font-size:.88rem; margin:0">
+          Dropping a slot from every layout means the courses scheduled into it never meet.
+          The slot itself and its sections stay put — reassign them from Manage courses, or
+          add the slot back to a layout.
+        </p>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,170 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'schools' %}
+{% block title %}Schools — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Schools</h1>
+    <div class="sub">
+      {{ schools|length }} school{{ '' if schools|length == 1 else 's' }}
+      {% if current_user.is_district_admin %} in your district{% endif %}
+    </div>
+  </div>
+  {% if current_user.is_homeroom_staff %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('staff.districts') }}">← Districts</a>
+  {% endif %}
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head"><h3>All schools</h3></div>
+    {% if schools %}
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th>School</th><th>Code</th><th>District</th><th>Grades</th>
+                <th>Timetable</th><th class="num">Students</th><th>Status</th>
+                <th class="tight"></th></tr>
+          </thead>
+          <tbody>
+            {% for item in schools %}
+            <tr>
+              <td><b>{{ item.name }}</b><br>
+                <small class="muted">{{ item.city }}{% if item.state %}, {{ item.state }}{% endif %}
+                  {% if item.principal_name %} · {{ item.principal_name }}{% endif %}</small></td>
+              <td class="mono">{{ item.code }}</td>
+              <td>{{ item.district.name if item.district else '—' }}</td>
+              <td>{{ item.low_grade }}–{{ item.high_grade }}</td>
+              <td><span class="badge">{{ item.rotation_label }}</span></td>
+              <td class="num">{{ '{:,}'.format(item.student_count) }}</td>
+              <td><span class="badge badge-{{ 'ok' if item.active else 'bad' }}">
+                {{ 'Active' if item.active else 'Inactive' }}</span></td>
+              <td class="tight">
+                <form method="post" action="{{ url_for('staff.toggle_school', school_id=item.id) }}">
+                  <button class="btn btn-sm btn-ghost" type="submit">
+                    {{ 'Deactivate' if item.active else 'Activate' }}</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty"><strong>No schools yet</strong>Create one to start onboarding.</div>
+    {% endif %}
+  </div>
+
+  <div class="card card-tint">
+    <h3>Create a school</h3>
+    <form method="post">
+      <div class="field">
+        <label for="name">School name *</label>
+        <input id="name" name="name" type="text" required placeholder="Northfield High School">
+      </div>
+
+      {% if current_user.is_homeroom_staff %}
+      <div class="field">
+        <label for="district_id">District *</label>
+        <select id="district_id" name="district_id" required>
+          <option value="">— Choose a district —</option>
+          {% for district in districts %}
+            <option value="{{ district.id }}">{{ district.name }} ({{ district.code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <div class="grid grid-2" style="gap:0 12px">
+        <div class="field">
+          <label for="code">Code</label>
+          <input id="code" name="code" type="text" placeholder="NHS">
+        </div>
+        <div class="field">
+          <label for="phone">Phone</label>
+          <input id="phone" name="phone" type="tel">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="address">Address</label>
+        <input id="address" name="address" type="text">
+      </div>
+      <div class="grid grid-2" style="gap:0 12px">
+        <div class="field">
+          <label for="city">City</label>
+          <input id="city" name="city" type="text">
+        </div>
+        <div class="field">
+          <label for="state">State</label>
+          <input id="state" name="state" type="text">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="principal_name">Principal</label>
+        <input id="principal_name" name="principal_name" type="text">
+      </div>
+
+      <div class="grid grid-2" style="gap:0 12px">
+        <div class="field">
+          <label for="low_grade">Lowest grade</label>
+          <input id="low_grade" name="low_grade" type="number" min="0" max="12" value="9">
+        </div>
+        <div class="field">
+          <label for="high_grade">Highest grade</label>
+          <input id="high_grade" name="high_grade" type="number" min="0" max="12" value="12">
+        </div>
+      </div>
+
+      <fieldset>
+        <legend>Timetable</legend>
+        <p class="field-hint" style="margin-top:0">
+          Schools run their week differently — pick the shape that matches. This can be
+          changed later from the school's bell schedule screen.
+        </p>
+        {% for key, mode in rotation_modes.items() %}
+        <div class="check">
+          <input type="radio" id="rot-{{ key }}" name="rotation_mode" value="{{ key }}"
+                 {% if key == 'daily' %}checked{% endif %}>
+          <label for="rot-{{ key }}"><b>{{ mode.label }}</b><br>
+            <span class="muted" style="font-weight:400">{{ mode.hint }}</span></label>
+        </div>
+        {% endfor %}
+        <div class="field" style="margin-bottom:0">
+          <label for="cycle_length">Cycle length (numbered cycles only)</label>
+          <input id="cycle_length" name="cycle_length" type="number" min="2" max="20" value="6">
+        </div>
+      </fieldset>
+
+      <div class="check">
+        <input type="checkbox" id="seed_periods" name="seed_periods" checked>
+        <label for="seed_periods"><b>Add a starter bell schedule and term</b><br>
+          <span class="muted" style="font-weight:400">Eight periods including a flex block.
+            A school with neither can't hold courses.</span></label>
+      </div>
+
+      <fieldset>
+        <legend>Principal account (optional)</legend>
+        <div class="grid grid-2" style="gap:0 12px">
+          <div class="field">
+            <label for="admin_first">First name</label>
+            <input id="admin_first" name="admin_first" type="text">
+          </div>
+          <div class="field">
+            <label for="admin_last">Last name</label>
+            <input id="admin_last" name="admin_last" type="text">
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="admin_email">Email</label>
+          <input id="admin_email" name="admin_email" type="email">
+        </div>
+      </fieldset>
+
+      <button class="btn btn-block" type="submit">Create school</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

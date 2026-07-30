@@ -1,0 +1,84 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'admin' %}
+{% block title %}Users — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Users</h1>
+    <div class="sub">{{ users|length }} accounts</div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.index') }}">← Administration</a>
+    <a class="btn btn-sm" href="{{ url_for('admin.new_user') }}">Add a user</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:18px; padding:16px 18px">
+  <form method="get" class="row" style="gap:10px">
+    <input type="text" name="q" value="{{ search }}" placeholder="Name, email or student ID"
+           style="max-width:280px">
+    <select name="role" style="max-width:180px">
+      <option value="">All roles</option>
+      {% for option in roles %}
+        <option value="{{ option }}" {% if role == option %}selected{% endif %}
+                style="text-transform:capitalize">{{ option|capitalize }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-sm" type="submit">Filter</button>
+    {% if search or role %}
+      <a class="btn btn-sm btn-ghost" href="{{ url_for('admin.users') }}">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+{% if users %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th><th>Email</th><th>Role</th>
+        <th class="hide-sm">Grade / Dept</th><th class="hide-sm">Student ID</th>
+        <th>Status</th><th class="tight"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr>
+        <td>
+          <div class="row" style="gap:9px; flex-wrap:nowrap">
+            <div class="avatar" style="width:28px; height:28px; font-size:.7rem;
+                 background:{{ 'var(--brand)' if user.is_admin else ('var(--accent)' if user.is_teacher else 'var(--ink-3)') }}">
+              {{ user.initials }}
+            </div>
+            <a href="{{ url_for('admin.user_detail', user_id=user.id) }}"><b>{{ user.display_name }}</b></a>
+          </div>
+        </td>
+        <td class="mono muted">{{ user.email }}</td>
+        <td>
+          <span class="badge badge-{{ 'brand' if user.is_admin else ('accent' if user.is_teacher else 'info') }}">
+            {{ user.role }}</span>
+        </td>
+        <td class="hide-sm">
+          {% if user.is_student %}Grade {{ user.grade_level or '—' }}
+          {% else %}{{ user.department or '—' }}{% endif %}
+        </td>
+        <td class="hide-sm mono muted">{{ user.student_number or '—' }}</td>
+        <td>
+          <span class="badge badge-{{ 'ok' if user.active else 'bad' }}">
+            {{ 'Active' if user.active else 'Inactive' }}</span>
+        </td>
+        <td class="tight">
+          <a class="btn btn-sm btn-ghost" href="{{ url_for('admin.user_detail', user_id=user.id) }}">Manage</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty"><strong>No users match</strong>Try a different search or clear the filters.</div>
+</div>
+{% endif %}
+{% endblock %}

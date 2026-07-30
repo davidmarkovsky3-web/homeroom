@@ -1,0 +1,115 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'districts' %}
+{% block title %}Districts — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Districts</h1>
+    <div class="sub">{{ districts|length }} customer district{{ '' if districts|length == 1 else 's' }}</div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('staff.schools') }}">Schools →</a>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <div class="card-head"><h3>All districts</h3></div>
+    {% if districts %}
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th>District</th><th>Code</th><th>State</th><th>Contact</th>
+                <th class="num">Schools</th><th class="num">Students</th>
+                <th>Status</th><th class="tight"></th></tr>
+          </thead>
+          <tbody>
+            {% for district in districts %}
+            <tr>
+              <td><b>{{ district.name }}</b><br>
+                <small class="muted">created {{ district.created_at.date()|pretty_date }}</small></td>
+              <td class="mono">{{ district.code }}</td>
+              <td>{{ district.state or '—' }}</td>
+              <td>
+                {{ district.contact_name or '—' }}
+                {% if district.contact_email %}
+                  <br><small class="muted mono">{{ district.contact_email }}</small>{% endif %}
+              </td>
+              <td class="num">{{ district.schools|length }}</td>
+              <td class="num">{{ '{:,}'.format(district.student_count) }}</td>
+              <td><span class="badge badge-{{ 'ok' if district.active else 'bad' }}">
+                {{ 'Active' if district.active else 'Inactive' }}</span></td>
+              <td class="tight">
+                <form method="post" action="{{ url_for('staff.toggle_district', district_id=district.id) }}">
+                  <button class="btn btn-sm btn-ghost" type="submit">
+                    {{ 'Deactivate' if district.active else 'Activate' }}</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty"><strong>No districts yet</strong>Create the first one to get started.</div>
+    {% endif %}
+  </div>
+
+  <div class="card card-tint">
+    <h3>Create a district</h3>
+    <form method="post">
+      <div class="field">
+        <label for="name">District name *</label>
+        <input id="name" name="name" type="text" required
+               placeholder="Riverside Unified School District">
+      </div>
+      <div class="grid grid-2" style="gap:0 12px">
+        <div class="field">
+          <label for="code">Code</label>
+          <input id="code" name="code" type="text" placeholder="RUSD">
+          <div class="field-hint">Auto-generated if blank.</div>
+        </div>
+        <div class="field">
+          <label for="state">State</label>
+          <input id="state" name="state" type="text" placeholder="CA">
+        </div>
+      </div>
+      <div class="field">
+        <label for="contact_name">Primary contact</label>
+        <input id="contact_name" name="contact_name" type="text">
+      </div>
+      <div class="field">
+        <label for="contact_email">Contact email</label>
+        <input id="contact_email" name="contact_email" type="email">
+      </div>
+      <div class="field">
+        <label for="phone">Phone</label>
+        <input id="phone" name="phone" type="tel">
+      </div>
+
+      <fieldset>
+        <legend>District administrator (optional)</legend>
+        <p class="field-hint" style="margin-top:0">
+          Creates a district-admin account that can manage every school in this district.
+          A temporary password is shown once after creation.
+        </p>
+        <div class="grid grid-2" style="gap:0 12px">
+          <div class="field">
+            <label for="admin_first">First name</label>
+            <input id="admin_first" name="admin_first" type="text">
+          </div>
+          <div class="field">
+            <label for="admin_last">Last name</label>
+            <input id="admin_last" name="admin_last" type="text">
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="admin_email">Email</label>
+          <input id="admin_email" name="admin_email" type="email">
+        </div>
+      </fieldset>
+
+      <button class="btn btn-block" type="submit">Create district</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

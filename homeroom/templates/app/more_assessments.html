@@ -1,0 +1,80 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'more' %}
+{% set active_sub = 'assessments' %}
+{% block title %}Assessments — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Assessments</h1>
+    <div class="sub">Standardized tests on file</div>
+  </div>
+  {% if is_staff %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('grades.analytics') }}">School analytics →</a>
+  {% endif %}
+</div>
+
+{% if assessments %}
+<div class="stack">
+  {% for assessment in assessments %}
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h3 style="margin:0">{{ assessment.name }}</h3>
+        <div class="muted" style="font-size:.85rem">
+          {{ assessment.subject }} · given {{ assessment.administered_on|pretty_date }}
+          · out of {{ '%g'|format(assessment.max_score) }}
+          · proficient at {{ '%g'|format(assessment.proficient_cutoff) }}
+        </div>
+      </div>
+      {% if is_staff %}
+        <a class="btn btn-ghost btn-sm"
+           href="{{ url_for('grades.assessment_detail', assessment_id=assessment.id) }}">Results</a>
+      {% endif %}
+    </div>
+
+    {% set mine = my_results.get(assessment.id) %}
+    {% if mine %}
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead><tr><th>Student</th><th class="num">Score</th><th class="num">%</th>
+                     <th class="num">State average</th><th>Result</th></tr></thead>
+          <tbody>
+            {% for result in mine %}
+            <tr>
+              <td><b>{{ result.student.known_as }} {{ result.student.last_name }}</b></td>
+              <td class="num"><b>{{ '%g'|format(result.score) }}</b></td>
+              <td class="num">{{ result.percent }}%</td>
+              <td class="num muted">
+                {{ assessment.state_average if assessment.state_average is not none else '—' }}
+                {% if result.vs_state is not none %}
+                  <br><small style="color:{{ 'var(--ok)' if result.vs_state >= 0 else 'var(--bad)' }}">
+                    {{ '+' if result.vs_state > 0 }}{{ result.vs_state }}</small>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge badge-{{ 'ok' if result.is_proficient else 'warn' }}">
+                  {{ 'Proficient' if result.is_proficient else 'Below proficient' }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% elif students %}
+      <p class="muted" style="font-size:.9rem; margin:0">No result on file for this test.</p>
+    {% else %}
+      <p class="muted" style="font-size:.9rem; margin:0">
+        {{ assessment.results|length }} results recorded.
+        {% if assessment.state_average is not none %}
+          State average {{ assessment.state_average }}.{% endif %}
+      </p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card"><div class="empty"><strong>No assessments</strong>
+  Nothing has been loaded yet.</div></div>
+{% endif %}
+{% endblock %}

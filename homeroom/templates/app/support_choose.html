@@ -1,0 +1,155 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'support' %}
+{% block title %}{{ support_label }} — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ support_label }}</h1>
+    <div class="sub">
+      {{ period.label }} · {{ period.time_range }} ·
+      {{ day.strftime('%A, %B %d').replace(' 0', ' ') }}
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('support.choose', date=prev_day.isoformat(), period=period.id) }}">←</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('support.choose', period=period.id) }}">Today</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('support.choose', date=next_day.isoformat(), period=period.id) }}">→</a>
+  </div>
+</div>
+
+{% if blocks|length > 1 %}
+<div class="card" style="margin-bottom:18px; padding:14px 18px">
+  <div class="row" style="gap:8px">
+    <b style="font-size:.85rem; color:var(--ink-3)">Block:</b>
+    {% for block in blocks %}
+      <a class="btn btn-sm {{ 'btn-soft' if block.id == period.id else 'btn-ghost' }}"
+         href="{{ url_for('support.choose', date=day.isoformat(), period=block.id) }}">{{ block.label }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if signup and signup.locked %}
+<div class="card support-card locked" style="margin-bottom:18px">
+  <div class="lock-note">
+    <div style="font-size:1.3rem">🔒</div>
+    <div>
+      <b>You've been placed in “{{ signup.session.name }}” by the office.</b>
+      <p class="muted" style="margin:4px 0 0; font-size:.9rem">
+        {% if signup.note %}{{ signup.note }}<br>{% endif %}
+        This placement can't be changed here. Talk to the office if you think it's wrong.
+        {% if signup.assigned_by %}Assigned by {{ signup.assigned_by.full_name }}.{% endif %}
+      </p>
+      <p class="muted" style="margin:8px 0 0; font-size:.9rem">
+        <b>{{ signup.session.teacher.full_name if signup.session.teacher else 'Staff' }}</b>
+        · Room {{ signup.session.location or '—' }} · {{ signup.session.kind_label }}
+      </p>
+    </div>
+  </div>
+</div>
+{% elif signup %}
+<div class="card" style="margin-bottom:18px; border-color:var(--brand)">
+  <div class="row-between">
+    <div>
+      <span class="badge badge-ok">Signed up</span>
+      <b style="margin-left:8px">{{ signup.session.name }}</b>
+      <div class="muted" style="font-size:.88rem; margin-top:3px">
+        {{ signup.session.teacher.full_name if signup.session.teacher else 'Staff' }}
+        · Room {{ signup.session.location or '—' }}
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('support.cancel', signup_id=signup.id) }}">
+      <button class="btn btn-sm btn-ghost" type="submit">Cancel signup</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid grid-sidebar">
+  <div>
+    {% if sessions %}
+      <form method="post">
+        <input type="hidden" name="date" value="{{ day.isoformat() }}">
+        <input type="hidden" name="period_id" value="{{ period.id }}">
+        <div class="stack">
+          {% for item in sessions %}
+          {% set mine = signup and signup.session_id == item.id %}
+          <label class="support-card {{ 'chosen' if mine }} {{ 'full' if item.is_full and not mine }}"
+                 style="display:block; cursor:{{ 'not-allowed' if (signup and signup.locked) else 'pointer' }}">
+            <div class="row-between" style="align-items:flex-start; gap:12px">
+              <div class="row" style="gap:11px; align-items:flex-start; min-width:0">
+                <input type="radio" name="session_id" value="{{ item.id }}"
+                       style="margin-top:5px; width:auto"
+                       {% if mine %}checked{% endif %}
+                       {% if (item.is_full and not mine) or (signup and signup.locked) %}disabled{% endif %}>
+                <div style="min-width:0">
+                  <b>{{ item.name }}</b>
+                  <span class="badge {{ 'badge-accent' if item.kind == 'taught' else '' }}">
+                    {{ item.kind_label }}</span>
+                  <div class="muted" style="font-size:.86rem; margin-top:3px">
+                    {{ item.teacher.full_name if item.teacher else 'Staff' }}
+                    · Room {{ item.location or '—' }}
+                  </div>
+                  {% if item.description %}
+                    <p class="muted" style="font-size:.88rem; margin:6px 0 0">{{ item.description }}</p>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="right" style="flex:none">
+                <span class="badge {{ 'badge-bad' if item.is_full else 'badge-ok' }}">
+                  {{ item.seats_open }} open</span>
+                <div class="muted" style="font-size:.76rem; margin-top:4px">
+                  {{ item.seats_taken }}/{{ item.capacity }}</div>
+              </div>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+
+        {% if not (signup and signup.locked) %}
+        <div class="card" style="margin-top:16px">
+          <div class="row-between">
+            <span class="muted" style="font-size:.9rem">
+              Pick one session for this block. You can change it until the block starts.</span>
+            <button class="btn" type="submit">
+              {{ 'Change my session' if signup else 'Sign up' }}</button>
+          </div>
+        </div>
+        {% endif %}
+      </form>
+    {% else %}
+      <div class="card">
+        <div class="empty">
+          <strong>No sessions published yet</strong>
+          Teachers haven't posted what they're running for this block on
+          {{ day.strftime('%A, %B %d').replace(' 0', ' ') }}.
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card card-tint">
+      <h3>How {{ support_label|lower }} works</h3>
+      <ol class="muted" style="padding-left:20px; margin:0; font-size:.9rem">
+        <li style="margin-bottom:8px">Teachers publish what they're offering each day —
+          either open work time or something taught.</li>
+        <li style="margin-bottom:8px">You choose one session per block.</li>
+        <li style="margin-bottom:8px">Sessions have a seat limit; full ones can't be picked.</li>
+        <li>If the office places you somewhere, that placement is locked and you can't move
+          yourself out of it.</li>
+      </ol>
+    </div>
+    <div class="card card-tint">
+      <h3>This block</h3>
+      <dl class="kv" style="grid-template-columns:100px 1fr">
+        <dt>Period</dt><dd>{{ period.label }}</dd>
+        <dt>Time</dt><dd class="mono">{{ period.time_range }}</dd>
+        <dt>Date</dt><dd>{{ day|pretty_date }}</dd>
+        <dt>Sessions</dt><dd>{{ sessions|length }}</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+{% endblock %}

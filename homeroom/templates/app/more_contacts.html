@@ -1,0 +1,59 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'more' %}
+{% set active_sub = 'contacts' %}
+{% block title %}Contacts — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Contact list</h1>
+    <div class="sub">{{ school.name }} · {{ people|length }} staff</div>
+  </div>
+</div>
+
+<div class="card">
+  {% if people %}
+    <div class="table-wrap" style="border:none">
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Role</th><th>Department</th><th>Email</th><th class="hide-sm">Phone</th></tr>
+        </thead>
+        <tbody>
+          {% for person in people %}
+          <tr>
+            <td>
+              <div class="row" style="gap:9px; flex-wrap:nowrap">
+                <div class="avatar" style="width:28px; height:28px; font-size:.7rem;
+                     background:{{ 'var(--brand)' if person.is_admin else 'var(--accent)' }}">
+                  {{ person.initials }}</div>
+                <div>
+                  <b>{{ person.known_as }} {{ person.last_name }}</b>
+                  {% if person.title %}<br><small class="muted">{{ person.title }}</small>{% endif %}
+                </div>
+              </div>
+            </td>
+            <td><span class="badge badge-{{ 'brand' if person.is_admin else 'accent' }}">
+              {{ person.role_label }}</span></td>
+            <td class="muted">{{ person.department or '—' }}</td>
+            <td><a class="mono" href="mailto:{{ person.email }}">{{ person.email }}</a></td>
+            <td class="hide-sm muted">{{ person.phone or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty"><strong>No staff listed</strong>Nobody is on file for this school.</div>
+  {% endif %}
+</div>
+
+{% if current_user.is_student or current_user.is_parent %}
+<div class="card card-tint" style="margin-top:18px">
+  <h3>Who you're seeing</h3>
+  <p class="muted" style="font-size:.9rem; margin:0">
+    The teachers of the courses you're enrolled in, plus the school administration.
+    Other staff aren't listed.
+  </p>
+</div>
+{% endif %}
+{% endblock %}

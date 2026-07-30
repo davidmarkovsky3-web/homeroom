@@ -1,0 +1,161 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'selection' %}
+{% block title %}Course Selection — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Course Selection</h1>
+    <div class="sub">
+      {{ window.name }} ·
+      {% if window.accepting %}
+        closes {{ window.closes_on|pretty_date }}
+      {% else %}
+        closed {{ window.closes_on|pretty_date }}
+      {% endif %}
+    </div>
+  </div>
+  <div class="row">
+    <span class="badge badge-{{ 'ok' if window.accepting else 'warn' }}">
+      {{ 'Open' if window.accepting else 'Closed' }}</span>
+    {% if submitted %}
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('courses.selection_summary') }}">View submitted picks</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if window.instructions %}
+<div class="card card-tint" style="margin-bottom:18px">
+  <div class="row" style="gap:12px; align-items:flex-start">
+    <div style="font-size:1.3rem">📋</div>
+    <div>
+      <b>Instructions</b>
+      <p class="muted" style="margin:4px 0 0; font-size:.92rem">{{ window.instructions }}</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if not window.accepting %}
+<div class="flash flash-warning" style="margin-bottom:18px">
+  This window is closed. Your submitted picks are shown below but can no longer be changed here —
+  contact your counselor for a schedule change.
+</div>
+{% endif %}
+
+<form method="post">
+  <div class="grid grid-sidebar">
+    <div>
+      {% for slot in slots %}
+      {% set first = picks.get((slot, 1)) %}
+      {% set second = picks.get((slot, 2)) %}
+      <div class="slot-card">
+        <div class="row-between">
+          <div class="row">
+            <span class="slot-num">{{ slot }}</span>
+            <b>Choice {{ slot }}</b>
+          </div>
+          {% if first and first.id %}
+            <span class="badge badge-{{ {'pending':'warn','approved':'ok','denied':'bad'}[first.status] }}">
+              {{ first.status }}</span>
+          {% endif %}
+        </div>
+
+        <div class="pick-grid">
+          <div>
+            <label for="slot_{{ slot }}_first" class="pick-tag pick-1">1st pick — required</label>
+            <select id="slot_{{ slot }}_first" name="slot_{{ slot }}_first"
+                    {% if not window.accepting %}disabled{% endif %}>
+              <option value="">— Select a course —</option>
+              {% for department, courses in catalog.items() %}
+              <optgroup label="{{ department }}">
+                {% for course in courses %}
+                  <option value="{{ course.id }}"
+                          {% if first and first.course_id == course.id %}selected{% endif %}>
+                    {{ course.code }} — {{ course.name }}{% if course.is_full %} (full){% endif %}
+                  </option>
+                {% endfor %}
+              </optgroup>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="slot_{{ slot }}_second" class="pick-tag pick-2">2nd pick — alternate</label>
+            <select id="slot_{{ slot }}_second" name="slot_{{ slot }}_second"
+                    {% if not window.accepting %}disabled{% endif %}>
+              <option value="">— No alternate —</option>
+              {% for department, courses in catalog.items() %}
+              <optgroup label="{{ department }}">
+                {% for course in courses %}
+                  <option value="{{ course.id }}"
+                          {% if second and second.course_id == course.id %}selected{% endif %}>
+                    {{ course.code }} — {{ course.name }}{% if course.is_full %} (full){% endif %}
+                  </option>
+                {% endfor %}
+              </optgroup>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        {% if first and first.reviewer_note %}
+          <p class="muted" style="font-size:.84rem; margin:12px 0 0">
+            <b>Counselor note:</b> {{ first.reviewer_note }}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      {% if window.accepting %}
+      <div class="card" style="margin-top:18px">
+        <div class="row-between">
+          <div>
+            <b>Ready to submit?</b>
+            <p class="muted" style="margin:2px 0 0; font-size:.88rem">
+              Submitting replaces any picks you've made before. You can resubmit until
+              {{ window.closes_on|pretty_date }}.
+            </p>
+          </div>
+          <button class="btn btn-lg" type="submit">
+            {{ 'Update my picks' if submitted else 'Submit my picks' }}
+          </button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="stack">
+      <div class="card card-tint">
+        <h3>How this works</h3>
+        <ol class="muted" style="padding-left:20px; margin:0; font-size:.9rem">
+          <li style="margin-bottom:8px">Every choice needs a <strong>1st pick</strong>.</li>
+          <li style="margin-bottom:8px">Add a <strong>2nd pick</strong> so your counselor has a
+            fallback if the section fills or conflicts with another period.</li>
+          <li style="margin-bottom:8px">The same course can't be a 1st pick twice, and can't be
+            both the 1st and 2nd pick of the same choice.</li>
+          <li>Your counselor approves each request individually. Approval seats you in the course.</li>
+        </ol>
+      </div>
+
+      <div class="card card-tint">
+        <h3>Window</h3>
+        <dl class="kv" style="grid-template-columns:110px 1fr">
+          <dt>Opens</dt><dd>{{ window.opens_on|pretty_date }}</dd>
+          <dt>Closes</dt><dd>{{ window.closes_on|pretty_date }}</dd>
+          <dt>Choices</dt><dd>{{ window.required_slots }} required</dd>
+          <dt>Status</dt>
+          <dd><span class="badge badge-{{ 'ok' if window.accepting else 'warn' }}">
+            {{ 'Accepting' if window.accepting else 'Closed' }}</span></dd>
+        </dl>
+      </div>
+
+      <div class="card card-tint">
+        <h3>Browse first</h3>
+        <p class="muted" style="font-size:.9rem">Not sure what to pick? The catalog lists
+           descriptions, prerequisites and open seats.</p>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('courses.catalog') }}">Open course catalog</a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

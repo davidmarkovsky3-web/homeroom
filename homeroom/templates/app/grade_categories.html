@@ -1,0 +1,106 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'grades' %}
+{% block title %}Grade categories — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Grade categories</h1>
+    <div class="sub">{{ course.name }} · <span class="mono">{{ course.code }}</span></div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('grades.gradebook', course=course.id) }}">← Gradebook</a>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head">
+        <h3>Grading mode</h3>
+        <span class="badge badge-brand" style="text-transform:capitalize">{{ course.grading_mode }}</span>
+      </div>
+      <form method="post" class="row" style="gap:10px; align-items:flex-end">
+        <input type="hidden" name="action" value="mode">
+        <div class="field grow" style="margin:0; max-width:320px">
+          <label for="grading_mode">How the course grade is figured</label>
+          <select id="grading_mode" name="grading_mode">
+            <option value="points" {% if course.grading_mode == 'points' %}selected{% endif %}>
+              Total points — all points earned ÷ all points possible</option>
+            <option value="weighted" {% if course.grading_mode == 'weighted' %}selected{% endif %}>
+              Weighted categories — each category counts for a set share</option>
+          </select>
+        </div>
+        <button class="btn btn-sm" type="submit">Save mode</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Categories</h3>
+        <span class="badge {{ 'badge-ok' if total_weight == 1 else 'badge-warn' }}">
+          {{ (total_weight * 100)|round|int }}% allocated</span>
+      </div>
+
+      {% if course.categories %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead>
+              <tr><th>Category</th><th class="num">Weight</th>
+                  <th class="num">Assignments</th><th class="tight"></th></tr>
+            </thead>
+            <tbody>
+              {% for category in course.categories %}
+              <tr>
+                <td><b>{{ category.name }}</b></td>
+                <td class="num">{{ (category.weight * 100)|round|int }}%</td>
+                <td class="num">{{ category.assignments|length }}</td>
+                <td class="tight">
+                  <form method="post"
+                        onsubmit="return confirm('Remove “{{ category.name }}”? Its assignments stay but lose their category.');">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="category_id" value="{{ category.id }}">
+                    <button class="btn btn-sm btn-ghost" type="submit">Remove</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if course.grading_mode == 'weighted' and total_weight != 1 %}
+          <div class="flash flash-warning" style="margin-top:14px">
+            Weights add up to {{ (total_weight * 100)|round|int }}%, not 100%. Grades still
+            calculate — categories are normalised against the weight actually used — but the
+            numbers will read oddly to students.
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="empty"><strong>No categories</strong>
+          Add some to use weighted grading.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card card-tint">
+    <h3>Add a category</h3>
+    <form method="post">
+      <input type="hidden" name="action" value="add">
+      <div class="field">
+        <label for="name">Name</label>
+        <input id="name" name="name" type="text" required placeholder="Tests">
+      </div>
+      <div class="field">
+        <label for="weight">Weight</label>
+        <input id="weight" name="weight" type="number" min="0" max="1" step="0.05" value="0.25">
+        <div class="field-hint">A decimal share of the grade — 0.4 means 40%.</div>
+      </div>
+      <button class="btn btn-block" type="submit">Add category</button>
+    </form>
+    <hr class="divider">
+    <p class="muted" style="font-size:.88rem; margin:0">
+      Categories only affect the grade when the course is in <b>weighted</b> mode. In points
+      mode every assignment counts by its point value regardless of category.
+    </p>
+  </div>
+</div>
+{% endblock %}

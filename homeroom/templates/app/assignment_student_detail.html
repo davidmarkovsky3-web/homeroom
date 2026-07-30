@@ -1,0 +1,60 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'assignments' %}
+{% block title %}{{ assignment.title }} — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ assignment.title }}</h1>
+    <div class="sub">
+      {{ assignment.course.name }} · <span class="mono">{{ assignment.course.code }}</span>
+      {% if assignment.due_on %} · due {{ assignment.due_on|pretty_date }}{% endif %}
+    </div>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('assignments.my_assignments') }}">← Assignments</a>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="card">
+    <h3>Details</h3>
+    <p>{{ assignment.description or 'No description was posted for this assignment.' }}</p>
+    <hr class="divider">
+    <dl class="kv" style="grid-template-columns:150px 1fr">
+      <dt>Course</dt><dd>{{ assignment.course.name }}</dd>
+      <dt>Teacher</dt>
+      <dd>{{ assignment.course.teacher.full_name if assignment.course.teacher else '—' }}</dd>
+      <dt>Category</dt><dd>{{ assignment.category.name if assignment.category else '—' }}</dd>
+      <dt>Assigned</dt><dd>{{ assignment.assigned_on|pretty_date }}</dd>
+      <dt>Due</dt><dd>{{ assignment.due_on|pretty_date if assignment.due_on else 'No due date' }}</dd>
+      <dt>Points possible</dt><dd>{{ '%g'|format(assignment.points_possible) }}</dd>
+      <dt>Counts toward grade</dt><dd>{{ 'Yes' if assignment.graded else 'No — practice only' }}</dd>
+    </dl>
+  </div>
+
+  <div class="card">
+    <div class="stat-label">Your score</div>
+    {% if grade and grade.points_earned is not none %}
+      <div class="grade-lg" style="color:{{ grade.percent|grade_color }}">
+        {{ '%g'|format(grade.points_earned) }}<span class="muted" style="font-size:1.1rem">/{{ '%g'|format(assignment.points_possible) }}</span>
+      </div>
+      <div class="muted">{{ grade.percent }}% · {{ grade.letter }}</div>
+      <div class="meter" style="margin-top:10px">
+        <span style="width:{{ [grade.percent, 100]|min }}%; background:{{ grade.percent|grade_color }}"></span>
+      </div>
+    {% else %}
+      <div class="grade-lg muted">—</div>
+      <div class="muted">
+        {% if grade and grade.status == 'missing' %}Marked missing
+        {% elif grade and grade.status == 'excused' %}Excused — not counted
+        {% else %}Not graded yet{% endif %}
+      </div>
+    {% endif %}
+
+    {% if grade and grade.comment %}
+      <hr class="divider">
+      <div class="stat-label">Teacher comment</div>
+      <p style="margin:6px 0 0; font-size:.92rem">{{ grade.comment }}</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

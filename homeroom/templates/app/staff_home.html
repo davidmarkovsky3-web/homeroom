@@ -1,0 +1,134 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'hq' %}
+{% block title %}Homeroom HQ{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Homeroom HQ</h1>
+    <div class="sub">Vendor console — customers, pipeline and provisioning</div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('staff.districts') }}">New district</a>
+    <a class="btn btn-sm" href="{{ url_for('staff.schools') }}">New school</a>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:18px">
+  <div class="stat">
+    <div class="stat-label">Districts</div>
+    <div class="stat-value">{{ counts.districts }}</div>
+    <div class="stat-note">{{ counts.schools }} schools</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Students under management</div>
+    <div class="stat-value">{{ '{:,}'.format(counts.students) }}</div>
+    <div class="stat-note">{{ counts.staff }} staff accounts</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Open requests</div>
+    <div class="stat-value">{{ open_requests }}</div>
+    <div class="stat-note">excludes won and lost</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Needs attention</div>
+    <div class="stat-value" style="color:{{ 'var(--warn)' if (counts.demos + counts.purchases) else 'inherit' }}">
+      {{ counts.demos + counts.purchases }}</div>
+    <div class="stat-note">{{ counts.demos }} demos · {{ counts.purchases }} quotes</div>
+  </div>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head">
+        <h3>Latest demo requests</h3>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('staff.demos') }}">All</a>
+      </div>
+      {% if latest_demos %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead><tr><th>Organization</th><th>Contact</th><th class="hide-sm">Size</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for lead in latest_demos %}
+              <tr>
+                <td><b>{{ lead.organization }}</b><br>
+                  <small class="muted">{{ lead.submitted_at.date()|pretty_date }}</small></td>
+                <td>{{ lead.name }}<br><small class="muted mono">{{ lead.email }}</small></td>
+                <td class="hide-sm">{{ lead.student_count or '—' }}</td>
+                <td><span class="badge badge-{{ {'new':'warn','contacted':'info','scheduled':'brand','closed':'ok'}[lead.status] }}">
+                  {{ lead.status }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">No demo requests yet.</div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Latest purchase requests</h3>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('staff.purchases') }}">All</a>
+      </div>
+      {% if latest_purchases %}
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead><tr><th>Organization</th><th>Plan</th><th class="num">Seats</th>
+                       <th>Status</th></tr></thead>
+            <tbody>
+              {% for order in latest_purchases %}
+              <tr>
+                <td><b>{{ order.organization }}</b><br>
+                  <small class="muted">{{ order.contact_name }}</small></td>
+                <td style="text-transform:capitalize">{{ order.plan }}</td>
+                <td class="num">{{ '{:,}'.format(order.seats) }}</td>
+                <td><span class="badge badge-{{ {'new':'warn','quoted':'info','invoiced':'brand','won':'ok','lost':'bad'}[order.status] }}">
+                  {{ order.status }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">No purchase requests yet.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h3>Customers</h3></div>
+      <div class="stack">
+        {% for district in districts %}
+        <div>
+          <div class="row-between">
+            <b style="font-size:.92rem">{{ district.name }}</b>
+            <span class="badge {{ 'badge-ok' if district.active else 'badge-bad' }}">
+              {{ district.code }}</span>
+          </div>
+          <div class="muted" style="font-size:.8rem">
+            {{ district.schools|length }} school{{ '' if district.schools|length == 1 else 's' }}
+            · {{ '{:,}'.format(district.student_count) }} students
+          </div>
+        </div>
+        {% else %}
+          <div class="empty">No districts yet.</div>
+        {% endfor %}
+      </div>
+      <hr class="divider">
+      <a class="btn btn-ghost btn-block" href="{{ url_for('staff.districts') }}">Manage districts</a>
+    </div>
+
+    <div class="card card-tint">
+      <h3>Why this is separate</h3>
+      <p class="muted" style="font-size:.88rem; margin:0">
+        Sales and provisioning belong to Homeroom, not to the schools using it. School
+        administrators never see this console — they run a school, they don't work here.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

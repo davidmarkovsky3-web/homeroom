@@ -1,0 +1,96 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'calendar' %}
+{% block title %}{{ day.strftime('%b %d') }} — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ day.strftime('%A, %B %d, %Y').replace(' 0', ' ') }}</h1>
+    <div class="sub">
+      {% if school_day and school_day.in_session %}
+        <strong>{{ day_label }}</strong>
+        {% if school_day.note %}· {{ school_day.note }}{% endif %}
+      {% elif school_day %}
+        No school{% if school_day.note %} · {{ school_day.note }}{% endif %}
+      {% else %}
+        Not a scheduled school day
+      {% endif %}
+    </div>
+  </div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('calendar.day_detail', day=prev_day.isoformat()) }}">←</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('calendar.index', year=day.year, month=day.month) }}">Month</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('calendar.day_detail', day=next_day.isoformat()) }}">→</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('main.responsive_schedule', date=day.isoformat()) }}">My schedule</a>
+    {% if can_manage %}
+      <a class="btn btn-sm" href="{{ url_for('calendar.new_event', date=day.isoformat()) }}">Add event</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid grid-sidebar">
+  <div class="stack">
+    {% if events %}
+      {% for event in events %}
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="row" style="gap:9px">
+              <span class="badge ev-{{ event.category }}" style="text-transform:capitalize">{{ event.category }}</span>
+              <h3 style="margin:0">{{ event.title }}</h3>
+            </div>
+            <div class="muted" style="font-size:.86rem; margin-top:5px">
+              {{ event.time_label }}
+              {% if event.course %} · {{ event.course.code }} {{ event.course.name }}{% endif %}
+              {% if event.grade_level %} · Grade {{ event.grade_level }} only{% endif %}
+            </div>
+          </div>
+          {% if not current_user.is_student and (current_user.is_admin or event.created_by_id == current_user.id) %}
+          <form method="post" action="{{ url_for('calendar.delete_event', event_id=event.id) }}"
+                onsubmit="return confirm('Delete “{{ event.title }}”?');">
+            <button class="btn btn-sm btn-ghost" type="submit">Delete</button>
+          </form>
+          {% endif %}
+        </div>
+        {% if event.description %}
+          <p style="margin:0">{{ event.description }}</p>
+        {% endif %}
+        {% if event.created_by %}
+          <p class="muted" style="font-size:.8rem; margin:12px 0 0">
+            Posted by {{ event.created_by.full_name }}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="card">
+        <div class="empty">
+          <strong>Nothing on the calendar</strong>
+          No events are scheduled for this date.
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card card-tint">
+    <h3>Rotation</h3>
+    <dl class="kv" style="grid-template-columns:110px 1fr">
+      <dt>Date</dt><dd>{{ day|pretty_date }}</dd>
+      <dt>Weekday</dt><dd>{{ day.strftime('%A') }}</dd>
+      <dt>Day type</dt>
+      <dd>
+        {% if day_type %}
+          <span class="cal-type {{ day_type|lower }}">{{ day_type }}</span> Day
+        {% else %}
+          <span class="badge badge-warn">No school</span>
+        {% endif %}
+      </dd>
+      <dt>Events</dt><dd>{{ events|length }}</dd>
+    </dl>
+    <hr class="divider">
+    <a class="btn btn-ghost btn-block"
+       href="{{ url_for('main.responsive_schedule', date=day.isoformat()) }}">
+      See my schedule for this day
+    </a>
+  </div>
+</div>
+{% endblock %}

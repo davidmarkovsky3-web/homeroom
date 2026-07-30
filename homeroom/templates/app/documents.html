@@ -1,0 +1,95 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'documents' %}
+{% block title %}Documents — Homeroom{% endblock %}
+
+{% macro doc_class(ext) -%}
+{%- if ext in ('pdf',) -%}doc-pdf
+{%- elif ext in ('doc','docx','odt','rtf','txt','md') -%}doc-doc
+{%- elif ext in ('xls','xlsx','ods','csv') -%}doc-xls
+{%- elif ext in ('png','jpg','jpeg','gif','webp','heic') -%}doc-img
+{%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Documents</h1>
+    <div class="sub">{{ documents|length }} file{{ '' if documents|length == 1 else 's' }} available to you</div>
+  </div>
+  {% if can_upload %}
+    <a class="btn btn-sm" href="{{ url_for('documents.upload') }}">Upload a document</a>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-bottom:18px; padding:16px 18px">
+  <form method="get" class="row" style="gap:10px">
+    <input type="text" name="q" value="{{ search }}" placeholder="Search titles and descriptions"
+           style="max-width:280px">
+    <select name="category" style="max-width:200px">
+      <option value="">All categories</option>
+      {% for option in categories %}
+        <option value="{{ option }}" {% if category == option %}selected{% endif %}
+                style="text-transform:capitalize">{{ option|capitalize }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-sm" type="submit">Filter</button>
+    {% if search or category %}
+      <a class="btn btn-sm btn-ghost" href="{{ url_for('documents.index') }}">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="card">
+  {% if documents %}
+    {% for document in documents %}
+    <div class="doc-row">
+      <div class="doc-icon {{ doc_class(document.extension) }}">{{ document.extension or 'file' }}</div>
+      <div class="grow" style="min-width:0">
+        {% if can_open_inline(document) %}
+          <a href="{{ url_for('documents.view', document_id=document.id) }}" target="_blank"
+             rel="noopener"><b>{{ document.title }}</b></a>
+        {% else %}
+          <a href="{{ url_for('documents.download', document_id=document.id) }}">
+            <b>{{ document.title }}</b></a>
+        {% endif %}
+        {% if document.staff_only %}<span class="badge badge-warn">Staff only</span>{% endif %}
+        {% if document.description %}
+          <div class="muted" style="font-size:.86rem">{{ document.description }}</div>
+        {% endif %}
+        <div class="muted" style="font-size:.78rem; margin-top:3px">
+          <span class="badge" style="text-transform:capitalize">{{ document.category }}</span>
+          {{ document.scope_label }}
+          {% if document.course %} · {{ document.course.code }}{% endif %}
+          {% if document.student %} · {{ document.student.full_name }}{% endif %}
+          · {{ document.size_label }}
+          · {{ document.uploaded_at.date()|pretty_date }}
+          {% if document.uploaded_by %} · {{ document.uploaded_by.full_name }}{% endif %}
+        </div>
+      </div>
+      <div class="row" style="gap:6px; flex-wrap:nowrap">
+        {% if can_open_inline(document) %}
+          <a class="btn btn-sm btn-soft" target="_blank" rel="noopener"
+             href="{{ url_for('documents.view', document_id=document.id) }}">Open</a>
+        {% endif %}
+        <a class="btn btn-sm btn-ghost"
+           href="{{ url_for('documents.download', document_id=document.id) }}">Download</a>
+        {% if current_user.is_admin or current_user.is_district_admin
+              or current_user.is_homeroom_staff
+              or document.uploaded_by_id == current_user.id %}
+        <form method="post" action="{{ url_for('documents.delete', document_id=document.id) }}"
+              onsubmit="return confirm('Delete “{{ document.title }}”?');">
+          <button class="btn btn-sm btn-ghost" type="submit">Delete</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">
+      <strong>No documents</strong>
+      {% if search or category %}Nothing matches this filter.
+      {% else %}Nothing has been posted that you can see.{% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

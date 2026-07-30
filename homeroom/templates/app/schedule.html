@@ -1,0 +1,177 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'schedule' %}
+{% block title %}Schedule — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Schedule</h1>
+    <div class="sub">
+      Week of {{ monday.strftime('%B %d, %Y').replace(' 0', ' ') }}
+      {% if term %} · {{ term.name }}, {{ term.school_year }}{% endif %}
+      {% if school %} · {{ school.rotation_label }}{% endif %}
+    </div>
+  </div>
+  <div class="row no-print">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('main.schedule', week=prev_week.isoformat()) }}">← Prev</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('main.schedule') }}">This week</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('main.schedule', week=next_week.isoformat()) }}">Next →</a>
+    <a class="btn btn-sm" href="{{ url_for('main.responsive_schedule') }}">Today view</a>
+  </div>
+</div>
+
+<div class="card" style="overflow-x:auto">
+  <table class="sched-grid">
+    <thead>
+      <tr>
+        <th style="width:118px"></th>
+        {% for day in days %}
+        <th class="day {{ 'is-today' if day == today }}">
+          <b>{{ day.strftime('%a') }}</b>
+          <span>{{ day.strftime('%b %d').replace(' 0', ' ') }}</span>
+          {% if layouts[loop.index0] %}
+            <span class="cal-type" style="margin-top:3px; display:inline-block">
+              {{ layouts[loop.index0] }}</span>
+          {% else %}
+            {% set label = day_labels.get(day) %}
+            {% if label and label != 'School day' %}
+              <span class="cal-type {{ label[:1]|lower }}" style="margin-top:3px; display:inline-block">
+                {{ label }}</span>
+            {% endif %}
+          {% endif %}
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in grid %}
+      <tr>
+        <td>
+          <div class="period-label">
+            <b>{{ row.period.label }}</b>
+            <span>{{ row.period.time_range }}</span>
+          </div>
+        </td>
+        {% for cell in row.cells %}
+        <td>
+          {% if not cell.runs %}
+            <div class="sched-cell empty-cell" title="This slot doesn't run today"></div>
+          {% elif cell.course %}
+            <a class="sched-cell {{ 'is-today' if cell.date == today }}"
+               style="display:block; color:inherit"
+               href="{{ url_for('courses.detail', course_id=cell.course.id) }}">
+              <b>{{ cell.course.name }}</b>
+              <div class="meta">{{ cell.time_range }} · Rm {{ cell.course.room or '—' }}</div>
+              <div class="meta">
+                {% if current_user.is_student %}
+                  {{ cell.course.teacher.full_name if cell.course.teacher else 'Staff TBD' }}
+                {% else %}
+                  {{ cell.course.seats_taken }}/{{ cell.course.capacity }} students
+                {% endif %}
+              </div>
+            </a>
+          {% elif cell.support %}
+            {% set session = cell.support.session if cell.support.session is defined else cell.support %}
+            <div class="sched-cell {{ 'is-today' if cell.date == today }}"
+                 style="border-color:var(--accent)">
+              <b>{{ session.name }}</b>
+              <div class="meta">{{ support_label }} · Rm {{ session.location or '—' }}</div>
+              <div class="meta">
+                {% if current_user.is_student %}
+                  {{ session.teacher.full_name if session.teacher else 'Staff' }}
+                  {% if cell.support.locked is defined and cell.support.locked %}· 🔒 assigned{% endif %}
+                {% else %}
+                  {{ session.seats_taken }}/{{ session.capacity }} signed up
+                {% endif %}
+              </div>
+            </div>
+          {% elif row.period.is_support and cell.open %}
+            <a class="sched-cell empty-cell" style="display:block; color:var(--ink-3)"
+               href="{{ url_for('support.index') }}">
+              <b style="font-weight:600">{{ row.period.label }}</b>
+              <div class="meta">
+                {{ 'Not signed up' if current_user.is_student else 'Nothing published' }}</div>
+            </a>
+          {% elif not row.period.is_instructional %}
+            <div class="sched-cell empty-cell" style="display:grid; place-items:center">
+              <span class="muted" style="font-size:.76rem">{{ row.period.label }}</span>
+            </div>
+          {% else %}
+            <div class="sched-cell empty-cell"></div>
+          {% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="grid grid-sidebar" style="margin-top:18px">
+  <div class="card">
+    <div class="card-head">
+      <h3>{{ 'My courses' if current_user.is_student else 'My sections' }}</h3>
+      <span class="badge">{{ all_courses|length }} total</span>
+    </div>
+    {% if all_courses %}
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Period</th><th>Meets</th><th class="hide-sm">Room</th>
+                <th>{{ 'Teacher' if current_user.is_student else 'Enrolled' }}</th>
+                <th class="num hide-sm">Credits</th></tr>
+          </thead>
+          <tbody>
+            {% for course in all_courses %}
+            <tr>
+              <td>
+                <a href="{{ url_for('courses.detail', course_id=course.id) }}">
+                  <b>{{ course.name }}</b></a><br>
+                <small class="muted mono">{{ course.code }} · {{ course.department }}</small>
+              </td>
+              <td>{{ course.period.label if course.period else '—' }}</td>
+              <td><span class="badge">{{ course.days_label }}</span></td>
+              <td class="hide-sm">{{ course.room or '—' }}</td>
+              <td>
+                {% if current_user.is_student %}
+                  {{ course.teacher.full_name if course.teacher else '—' }}
+                {% else %}
+                  {{ course.seats_taken }}/{{ course.capacity }}
+                {% endif %}
+              </td>
+              <td class="num hide-sm">{{ course.credits }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty"><strong>No courses yet</strong>
+        {% if current_user.is_student %}Your counselor hasn't finalized your schedule.
+        {% else %}No sections are assigned to you.{% endif %}</div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card card-tint">
+      <h3>Reading this grid</h3>
+      <p class="muted" style="font-size:.88rem">
+        {% if school and school.rotation_mode == 'ab' %}
+          This school alternates A and B days. A section set to A days only appears in those
+          columns and is blank on B days.
+        {% elif school and school.rotation_mode == 'weekday' %}
+          This school meets on fixed weekdays. Each section appears only on the days it meets.
+        {% elif school and school.rotation_mode == 'cycle' %}
+          This school runs a numbered day cycle. Each column shows which cycle day it is.
+        {% else %}
+          Every section at this school meets on every school day.
+        {% endif %}
+      </p>
+    </div>
+    <div class="card card-tint no-print">
+      <h3>Print this schedule</h3>
+      <button class="btn btn-ghost btn-block" onclick="window.print()">Print week</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

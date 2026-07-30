@@ -1,0 +1,210 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'grades' %}
+{% block title %}Gradebook — Homeroom{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Gradebook</h1>
+    <div class="sub">
+      {% if course %}{{ course.name }} · <span class="mono">{{ course.code }}</span>
+        · {{ course.seats_taken }} students{% else %}No sections{% endif %}
+    </div>
+  </div>
+  {% if course %}
+  <div class="row">
+    <a class="btn btn-ghost btn-sm"
+       href="{{ url_for('assignments.categories', course_id=course.id) }}">Categories</a>
+    <a class="btn btn-sm" href="{{ url_for('assignments.new_assignment', course=course.id) }}">
+      New assignment</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if my_courses %}
+<div class="card" style="margin-bottom:18px; padding:14px 18px">
+  <div class="row" style="gap:8px">
+    <b style="font-size:.85rem; color:var(--ink-3)">Section:</b>
+    {% for option in my_courses %}
+      <a class="btn btn-sm {{ 'btn-soft' if course and option.id == course.id else 'btn-ghost' }}"
+         href="{{ url_for('grades.gradebook', course=option.id) }}">{{ option.code }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if course %}
+<div class="grid grid-4" style="margin-bottom:18px">
+  <div class="stat">
+    <div class="stat-label">Class average</div>
+    <div class="grade-lg" style="color:{{ average|grade_color }}">
+      {{ average|pct if average is not none else '—' }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Assignments</div>
+    <div class="grade-lg">{{ book.assignments|length }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Students</div>
+    <div class="grade-lg">{{ book.rows|length }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Need support</div>
+    <div class="grade-lg" style="color:{{ 'var(--bad)' if at_risk else 'inherit' }}">
+      {{ at_risk|length }}</div>
+    <div class="stat-note">flagged in this section</div>
+  </div>
+</div>
+
+{% if at_risk %}
+<div class="card" style="margin-bottom:18px">
+  <div class="card-head">
+    <h3>Students who may need more help</h3>
+    <span class="badge badge-warn">{{ at_risk|length }}</span>
+  </div>
+  <p class="muted" style="font-size:.88rem; margin-top:-6px">
+    Combines standardized test results, course grade, missing work and attendance.
+  </p>
+  <div class="table-wrap" style="border:none">
+    <table>
+      <thead>
+        <tr><th>Student</th><th>Grade</th><th>Why they're flagged</th><th class="tight"></th></tr>
+      </thead>
+      <tbody>
+        {% for entry in at_risk %}
+        <tr class="risk-row {{ 'risk-high' if entry.risk.level == 'high' else 'risk-watch' }}">
+          <td>
+            <b>{{ entry.student.display_name }}</b><br>
+            <small class="muted">Grade {{ entry.student.grade_level or '—' }}</small>
+          </td>
+          <td>
+            {% if entry.grade.percent is not none %}
+              <span class="grade-pill" style="color:{{ entry.grade.percent|grade_color }}">
+                <b>{{ entry.grade.letter }}</b> {{ entry.grade.percent }}%</span>
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+          <td>
+            <ul class="risk-reasons" style="margin:0; padding-left:16px">
+              {% for reason in entry.risk.reasons %}<li>{{ reason }}</li>{% endfor %}
+            </ul>
+          </td>
+          <td class="tight">
+            <a class="btn btn-sm btn-ghost"
+               href="{{ url_for('grades.report', student=entry.student.id) }}">Open</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if assessments %}
+<div class="card" style="margin-bottom:18px">
+  <div class="card-head"><h3>Test scores for this section</h3></div>
+  <div class="table-wrap" style="border:none">
+    <table>
+      <thead>
+        <tr><th>Assessment</th><th>Subject</th><th class="num">Class avg</th>
+            <th class="num">State avg</th><th class="num">Difference</th>
+            <th class="num">Proficient</th></tr>
+      </thead>
+      <tbody>
+        {% for row in assessments %}
+        <tr>
+          <td><b>{{ row.assessment.name }}</b><br>
+            <small class="muted">{{ row.count }} students</small></td>
+          <td class="muted">{{ row.assessment.subject }}</td>
+          <td class="num"><b>{{ row.average }}</b></td>
+          <td class="num muted">{{ row.state_average if row.state_average is not none else '—' }}</td>
+          <td class="num">
+            {% if row.vs_state is not none %}
+              <b style="color:{{ 'var(--ok)' if row.vs_state >= 0 else 'var(--bad)' }}">
+                {{ '+' if row.vs_state > 0 }}{{ row.vs_state }}</b>
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+          <td class="num">{{ row.proficient_rate }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-head">
+    <h3>Scores</h3>
+    <small class="muted">Type a number, or <b>M</b> for missing, <b>E</b> for excused</small>
+  </div>
+  {% if book.assignments and book.rows %}
+  <form method="post" action="{{ url_for('grades.quick_grade', course_id=course.id) }}">
+    <div class="table-wrap" style="max-height:600px; overflow:auto">
+      <table class="gradebook">
+        <thead>
+          <tr>
+            <th class="name-col">Student</th>
+            {% for assignment in book.assignments %}
+              <th>
+                <a href="{{ url_for('assignments.detail', assignment_id=assignment.id) }}"
+                   style="color:inherit">{{ assignment.title }}</a><br>
+                <span class="muted" style="font-weight:500">{{ '%g'|format(assignment.points_possible) }} pts</span>
+              </th>
+            {% endfor %}
+            <th class="col-center">Grade</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in book.rows %}
+          <tr>
+            <td class="name-col">
+              <a href="{{ url_for('grades.report', student=row.student.id) }}">
+                <b>{{ row.student.display_name }}</b></a>
+            </td>
+            {% for cell in row.cells %}
+              <td class="score {{ 'miss' if cell and cell.status == 'missing' }}
+                         {{ 'exc' if cell and cell.status == 'excused' }}">
+                {% if cell %}
+                  <input class="score-input" name="g_{{ cell.id }}"
+                         value="{% if cell.status == 'missing' %}M{% elif cell.status == 'excused' %}E{% elif cell.points_earned is not none %}{{ '%g'|format(cell.points_earned) }}{% endif %}"
+                         aria-label="{{ row.student.full_name }}">
+                {% else %}<span class="muted">—</span>{% endif %}
+              </td>
+            {% endfor %}
+            <td class="col-center">
+              {% if row.summary.percent is not none %}
+                <span class="grade-pill" style="color:{{ row.summary.percent|grade_color }}">
+                  <b>{{ row.summary.letter }}</b> {{ row.summary.percent }}%</span>
+              {% else %}<span class="muted">—</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="row-between" style="margin-top:16px">
+      <span class="muted" style="font-size:.88rem">
+        Blank clears a score. Changes save together.</span>
+      <button class="btn" type="submit">Save scores</button>
+    </div>
+  </form>
+  {% else %}
+    <div class="empty">
+      <strong>{{ 'No assignments yet' if not book.assignments else 'No students enrolled' }}</strong>
+      {% if not book.assignments %}
+        Create one to start the gradebook.
+        <div style="margin-top:16px">
+          <a class="btn" href="{{ url_for('assignments.new_assignment', course=course.id) }}">
+            New assignment</a>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+{% else %}
+<div class="card"><div class="empty"><strong>No sections assigned</strong>
+  You aren't teaching anything yet.</div></div>
+{% endif %}
+{% endblock %}

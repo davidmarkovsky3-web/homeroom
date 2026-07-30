@@ -23,6 +23,11 @@ from homeroom.seed import seed_database
 
 PORT = int(os.environ.get("PORT", 9997))
 
+# Hosts like Render supply PORT and route traffic to the container, so the server
+# has to listen on every interface. Locally there is no PORT and we stay on
+# loopback, where the app is only reachable from this machine.
+HOSTED = bool(os.environ.get("PORT"))
+
 if not os.environ.get("HOMEROOM_SECRET_KEY"):
     # Ephemeral but unguessable. Signing out everyone on restart beats a published default.
     os.environ["HOMEROOM_SECRET_KEY"] = secrets.token_hex(32)
@@ -32,7 +37,7 @@ if not os.environ.get("HOMEROOM_SECRET_KEY"):
 app = create_app()
 
 if __name__ == "__main__":
-    host = "0.0.0.0" if "--lan" in sys.argv else "127.0.0.1"
+    host = "0.0.0.0" if (HOSTED or "--lan" in sys.argv) else "127.0.0.1"
 
     with app.app_context():
         if User.query.first() is None:
@@ -42,6 +47,8 @@ if __name__ == "__main__":
     print(f"\n  Homeroom serving on {host}:{PORT} (debugger disabled)")
     if host == "127.0.0.1":
         print("  Loopback only — point a tunnel at this port to share it.")
+    elif HOSTED:
+        print("  Listening on all interfaces for the hosting platform.")
     else:
         print("  Reachable from your local network.")
     print("\n  Demo accounts")
